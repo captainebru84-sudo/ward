@@ -36,3 +36,30 @@ contract MockDEX {
         IERC20(token).transferFrom(victim, address(this), IERC20(token).balanceOf(victim));
     }
 }
+
+/// @notice Minimal FTSO v2 stand-in exposing the one method Guardian consumes.
+///         Feed values and decimals are settable so tests can move the "market".
+contract MockFtsoV2 {
+    struct Feed {
+        uint256 value;
+        int8 decimals;
+    }
+
+    mapping(bytes21 => Feed) public feeds;
+
+    function setFeed(bytes21 id, uint256 value, int8 decimals_) external {
+        feeds[id] = Feed(value, decimals_);
+    }
+
+    function getFeedsById(
+        bytes21[] calldata ids
+    ) external view returns (uint256[] memory values, int8[] memory decimals_, uint64 timestamp) {
+        values = new uint256[](ids.length);
+        decimals_ = new int8[](ids.length);
+        for (uint256 i = 0; i < ids.length; i++) {
+            values[i] = feeds[ids[i]].value;
+            decimals_[i] = feeds[ids[i]].decimals;
+        }
+        timestamp = uint64(block.timestamp);
+    }
+}
