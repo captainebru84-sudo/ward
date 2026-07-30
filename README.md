@@ -26,3 +26,12 @@ ui/          Chat + transaction review card (web)
 ## Status
 
 Built during [Flare Summer Signal](https://dorahacks.io/hackathon/flaresummersignal) (July–August 2026). Work in progress.
+
+### Deployment (Coston2, chain ID 114)
+
+| Contract | Address |
+|---|---|
+| **Guardian** | [`0x36A5153A84f6edaaB1ADb3AeF9F6C46ff5592b78`](https://coston2-explorer.flare.network/address/0x36A5153A84f6edaaB1ADb3AeF9F6C46ff5592b78) |
+| FtsoV2 (resolved via ContractRegistry) | `0xC4e9c78EA53db782E28f28Fdf80BaF59336B304d` |
+
+Guardian reads live FTSO v2 feeds on-chain to enforce fair-value bounds at execution time. The `wardSigner` is currently a deployer-held key; it will be rotated to a TEE-attested key once the Confidential Space agent is live.
