@@ -6,6 +6,7 @@ Envelope out or a 403 listing every policy rule the plan violated.
 
 from fastapi import FastAPI, HTTPException
 
+from ward_agent.attestation import DEFAULT_AUDIENCE, NotInTee, fetch_attestation_token
 from ward_agent.chain import FtsoReader, get_w3
 from ward_agent.config import Settings, get_settings
 from ward_agent.envelope import SafetyEnvelope
@@ -90,6 +91,14 @@ def create_app(service: AgentService | None = None) -> FastAPI:
     @app.get("/signer")
     def signer() -> dict:
         return {"address": svc.signer.address, "ephemeral": svc.signer.ephemeral}
+
+    @app.get("/attestation")
+    def attestation(audience: str = DEFAULT_AUDIENCE) -> dict:
+        try:
+            token = fetch_attestation_token(svc.signer.address, audience)
+        except NotInTee as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        return {"token": token, "signer": svc.signer.address, "audience": audience}
 
     @app.post("/envelope")
     def envelope(intent: SwapIntent) -> dict:

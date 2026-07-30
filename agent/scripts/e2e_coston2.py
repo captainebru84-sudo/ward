@@ -5,19 +5,59 @@ tampered attempt is refused on-chain.
 Run from agent/:  uv run python scripts/e2e_coston2.py
 Requires .env with WARD_SIGNER_KEY (must be Guardian.wardSigner) and
 WARD_DEX_ADDRESS. The same key doubles as the demo user.
+
+TEE mode: set WARD_AGENT_URL=http://<tee-ip>:8080 and the envelope is
+quoted and signed by the remote Confidential Space agent instead; the
+local key is then only the demo user, not the signer.
 """
+
+import base64
+import json
+import os
+import urllib.request
 
 from eth_account import Account
 from eth_utils import function_signature_to_4byte_selector
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 
-from ward_agent.api import build_service
 from ward_agent.chain import ERC20_ABI, get_w3, guardian_contract
 from ward_agent.config import get_settings
 from ward_agent.planner import SwapIntent
 
 AMOUNT_IN = 100 * 10**18  # 100 mock USDC
+
+
+def http_get(url: str) -> dict:
+    with urllib.request.urlopen(url, timeout=20) as r:
+        return json.loads(r.read())
+
+
+def http_post(url: str, payload: dict) -> dict:
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read())
+
+
+def print_attestation(agent_url: str) -> None:
+    try:
+        token = http_get(f"{agent_url}/attestation")["token"]
+    except Exception as e:
+        print(f"attestation unavailable ({e}) — agent not in a TEE?")
+        return
+    payload = token.split(".")[1]
+    claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+    container = claims.get("submods", {}).get("container", {})
+    print("TEE attestation (signed by Google Confidential Computing):")
+    print(f"  hwmodel:      {claims.get('hwmodel')}")
+    print(f"  image_digest: {container.get('image_digest')}")
+    print(f"  eat_nonce:    {claims.get('eat_nonce')}  <- enclave wardSigner")
+    print(f"  dbgstat:      {claims.get('dbgstat')}")
 
 
 def send(w3: Web3, account, tx) -> dict:
@@ -31,19 +71,44 @@ def send(w3: Web3, account, tx) -> dict:
 
 def main() -> None:
     s = get_settings()
-    service = build_service(s)
+    agent_url = os.environ.get("WARD_AGENT_URL", "").rstrip("/")
     w3 = get_w3(s.rpc_url)
     user = Account.from_key(s.signer_key)
     guardian = guardian_contract(w3, s.guardian_address)
 
+    if agent_url:
+        print(f"TEE mode: envelopes signed by remote agent at {agent_url}")
+        signer_info = http_get(f"{agent_url}/signer")
+        agent_signer = signer_info["address"]
+        print(f"remote signer: {agent_signer} (ephemeral={signer_info['ephemeral']})")
+        print_attestation(agent_url)
+    else:
+        from ward_agent.api import build_service
+
+        service = build_service(s)
+        agent_signer = service.signer.address
+
     onchain_signer = guardian.functions.wardSigner().call()
-    assert onchain_signer == service.signer.address, (
-        f"agent signer {service.signer.address} != Guardian.wardSigner {onchain_signer}"
+    assert onchain_signer == agent_signer, (
+        f"agent signer {agent_signer} != Guardian.wardSigner {onchain_signer}"
     )
     print(f"wardSigner OK: {onchain_signer}")
 
-    intent = SwapIntent(user=user.address, token_in="USDC", token_out="WFLR", amount_in=AMOUNT_IN)
-    result = service.handle_swap(intent)
+    if agent_url:
+        result = http_post(
+            f"{agent_url}/envelope",
+            {
+                "user": user.address,
+                "token_in": "USDC",
+                "token_out": "WFLR",
+                "amount_in": AMOUNT_IN,
+            },
+        )
+    else:
+        intent = SwapIntent(
+            user=user.address, token_in="USDC", token_out="WFLR", amount_in=AMOUNT_IN
+        )
+        result = service.handle_swap(intent)
     print(f"quote: {result['quote']}")
 
     env = result["envelope"]

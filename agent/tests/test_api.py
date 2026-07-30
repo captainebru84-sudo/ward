@@ -35,6 +35,13 @@ def test_health_and_signer():
     assert signer["address"].startswith("0x")
 
 
+def test_attestation_unavailable_outside_tee():
+    client = make_client()
+    resp = client.get("/attestation")
+    assert resp.status_code == 503
+    assert "Confidential Space" in resp.json()["detail"]
+
+
 def test_envelope_endpoint_signs_valid_intent():
     client = make_client()
     resp = client.post(
