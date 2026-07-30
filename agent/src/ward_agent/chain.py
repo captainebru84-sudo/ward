@@ -16,31 +16,27 @@ FTSO_ABI = [
     }
 ]
 
+ENVELOPE_COMPONENTS = [
+    {"name": "user", "type": "address"},
+    {"name": "target", "type": "address"},
+    {"name": "selector", "type": "bytes4"},
+    {"name": "tokenIn", "type": "address"},
+    {"name": "maxAmountIn", "type": "uint256"},
+    {"name": "tokenOut", "type": "address"},
+    {"name": "minOut", "type": "uint256"},
+    {"name": "feedIn", "type": "bytes21"},
+    {"name": "feedOut", "type": "bytes21"},
+    {"name": "maxSlippageBps", "type": "uint256"},
+    {"name": "deadline", "type": "uint256"},
+    {"name": "nonce", "type": "uint256"},
+]
+
 GUARDIAN_ABI = [
     {
         "name": "hashEnvelope",
         "type": "function",
         "stateMutability": "view",
-        "inputs": [
-            {
-                "name": "env",
-                "type": "tuple",
-                "components": [
-                    {"name": "user", "type": "address"},
-                    {"name": "target", "type": "address"},
-                    {"name": "selector", "type": "bytes4"},
-                    {"name": "tokenIn", "type": "address"},
-                    {"name": "maxAmountIn", "type": "uint256"},
-                    {"name": "tokenOut", "type": "address"},
-                    {"name": "minOut", "type": "uint256"},
-                    {"name": "feedIn", "type": "bytes21"},
-                    {"name": "feedOut", "type": "bytes21"},
-                    {"name": "maxSlippageBps", "type": "uint256"},
-                    {"name": "deadline", "type": "uint256"},
-                    {"name": "nonce", "type": "uint256"},
-                ],
-            }
-        ],
+        "inputs": [{"name": "env", "type": "tuple", "components": ENVELOPE_COMPONENTS}],
         "outputs": [{"name": "", "type": "bytes32"}],
     },
     {
@@ -49,6 +45,35 @@ GUARDIAN_ABI = [
         "stateMutability": "view",
         "inputs": [],
         "outputs": [{"name": "", "type": "address"}],
+    },
+    {
+        "name": "execute",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+            {"name": "env", "type": "tuple", "components": ENVELOPE_COMPONENTS},
+            {"name": "wardSig", "type": "bytes"},
+            {"name": "amountIn", "type": "uint256"},
+            {"name": "data", "type": "bytes"},
+        ],
+        "outputs": [{"name": "amountOut", "type": "uint256"}],
+    },
+]
+
+ERC20_ABI = [
+    {
+        "name": "approve",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [{"name": "spender", "type": "address"}, {"name": "amount", "type": "uint256"}],
+        "outputs": [{"name": "", "type": "bool"}],
+    },
+    {
+        "name": "balanceOf",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [{"name": "account", "type": "address"}],
+        "outputs": [{"name": "", "type": "uint256"}],
     },
 ]
 

@@ -1,11 +1,11 @@
 {
   "default": {
     "max_spend": {
-      "USDC": 500000000,
+      "USDC": 500000000000000000000,
       "WFLR": 100000000000000000000000
     },
     "allowed_targets": {
-      "0x0000000000000000000000000000000000000000": ["swap(address,address,uint256)"]
+      "0xe1570af51Bfc33CDaEAD58378eE15416b370279e": ["swap(address,address,uint256)"]
     },
     "max_slippage_bps": 100,
     "max_deadline_seconds": 600
