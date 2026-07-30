@@ -8,5 +8,6 @@ coverage/
 dist/
 __pycache__/
 .venv/
+.pytest_cache/
 *.pyc
 .DS_Store
