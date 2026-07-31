@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     tokens_path: str = "tokens.json"
     envelope_ttl_seconds: int = 300
 
+    # NL intent layer. Either an API key (local dev) or Vertex mode (TEE: the
+    # enclave's service account authenticates — no key inside the attested image).
+    gemini_api_key: str = ""
+    gemini_vertex: bool = False
+    gemini_model: str = "gemini-2.5-flash"
+    gcp_project: str = "ward-guardian-2026"
+    gcp_location: str = "us-central1"
+
 
 @lru_cache
 def get_settings() -> Settings:

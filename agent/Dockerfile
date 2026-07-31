@@ -16,6 +16,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 # MockDEX on Coston2 (public). WARD_SIGNER_KEY is deliberately absent:
 # with no key configured the agent generates an ephemeral one inside the TEE.
 ENV WARD_DEX_ADDRESS=0xe1570af51Bfc33CDaEAD58378eE15416b370279e
+# Gemini via Vertex AI: the enclave's service account authenticates —
+# no API key inside the attested image.
+ENV WARD_GEMINI_VERTEX=true
 
 EXPOSE 8080
 CMD ["ward-agent", "serve"]

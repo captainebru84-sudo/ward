@@ -5,11 +5,13 @@ Envelope out or a 403 listing every policy rule the plan violated.
 """
 
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 from ward_agent.attestation import DEFAULT_AUDIENCE, NotInTee, fetch_attestation_token
 from ward_agent.chain import FtsoReader, get_w3
 from ward_agent.config import Settings, get_settings
 from ward_agent.envelope import SafetyEnvelope
+from ward_agent.intent import IntentParser, UnsupportedIntent
 from ward_agent.planner import Planner, SwapIntent, TokenInfo, TxPlan, build_envelope
 from ward_agent.policy import PolicyEngine
 from ward_agent.signer import WardSigner
@@ -24,6 +26,11 @@ class PolicyRefusal(Exception):
         super().__init__("; ".join(violations))
 
 
+class IntentRequest(BaseModel):
+    user: str
+    text: str
+
+
 class AgentService:
     def __init__(
         self,
@@ -32,12 +39,14 @@ class AgentService:
         signer: WardSigner,
         chain_id: int,
         guardian: str,
+        intent_parser: IntentParser | None = None,
     ):
         self.planner = planner
         self.policy = policy
         self.signer = signer
         self.chain_id = chain_id
         self.guardian = guardian
+        self.intent_parser = intent_parser
 
     def handle_swap(self, intent: SwapIntent) -> dict:
         plan = self.planner.plan_swap(intent)
@@ -77,7 +86,12 @@ def build_service(settings: Settings | None = None) -> AgentService:
     )
     policy = PolicyEngine.from_file(s.policies_path)
     signer = WardSigner.from_key_or_ephemeral(s.signer_key)
-    return AgentService(planner, policy, signer, s.chain_id, s.guardian_address)
+    intent_parser = None
+    if s.gemini_api_key or s.gemini_vertex:
+        from ward_agent.intent import build_system_prompt, gemini_complete
+
+        intent_parser = IntentParser(gemini_complete(s, build_system_prompt(tokens)), tokens)
+    return AgentService(planner, policy, signer, s.chain_id, s.guardian_address, intent_parser)
 
 
 def create_app(service: AgentService | None = None) -> FastAPI:
@@ -108,5 +122,25 @@ def create_app(service: AgentService | None = None) -> FastAPI:
             raise HTTPException(status_code=403, detail={"violations": e.violations})
         except KeyError as e:
             raise HTTPException(status_code=400, detail=f"unknown token or feed: {e}")
+
+    @app.post("/intent")
+    def intent(req: IntentRequest) -> dict:
+        if svc.intent_parser is None:
+            raise HTTPException(status_code=503, detail="intent layer not configured")
+        try:
+            swap, _draft = svc.intent_parser.parse(req.user, req.text)
+        except UnsupportedIntent as e:
+            raise HTTPException(status_code=400, detail={"unsupported": str(e)})
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"intent model unavailable: {e}")
+        try:
+            result = svc.handle_swap(swap)
+        except PolicyRefusal as e:
+            raise HTTPException(
+                status_code=403,
+                detail={"violations": e.violations, "parsedIntent": swap.model_dump()},
+            )
+        result["parsedIntent"] = swap.model_dump()
+        return result
 
     return app

@@ -15,6 +15,10 @@ Ward is an AI transaction copilot for the [Flare Network](https://flare.network)
 | **FTSO v2** | Guardian checks slippage / minOut bounds against Flare's enshrined ~1.8s oracle feeds at execution time. |
 | **Coston2 testnet** | Current deployment target (chain ID 114). |
 
+## Natural-language intents ("model proposes, policy engine disposes")
+
+`POST /intent` takes free text — *"swap 100 usdc into wflr"* — and hands it to Gemini for **parsing only**. The model outputs a structured draft (tokens, amount, slippage); it never sees keys, addresses, prices, or policies, and its output still walks the same deterministic planner → policy → signer path as any structured request. A parsed intent that violates policy is refused with the exact rule it broke. Inside the TEE, Gemini is reached via **Vertex AI using the enclave's service account** — no API key exists inside the attested image.
+
 ## Repo layout
 
 ```
