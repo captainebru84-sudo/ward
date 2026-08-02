@@ -48,6 +48,12 @@ const config: HardhatUserConfig = {
         ],
     },
     networks: {
+        hardhat: {
+            // inside the validity window of agent/attestation_sample.json, so
+            // attestation tests can verify the real Google-signed token
+            // (Hardhat cannot mine blocks with timestamps in the past)
+            initialDate: "2026-07-30T23:50:00Z",
+        },
         sepolia: {
             url: "https://rpc.ankr.com/eth_sepolia",
             accounts: [`${PRIVATE_KEY}`],

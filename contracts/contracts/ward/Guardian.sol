@@ -9,6 +9,7 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {TestFtsoV2Interface} from "@flarenetwork/flare-periphery-contracts/coston2/TestFtsoV2Interface.sol";
+import {IWardAttestor} from "./attestation/IWardAttestor.sol";
 
 /// @title Guardian — on-chain enforcement of Ward Safety Envelopes
 /// @notice The Ward copilot (running in a TEE) analyses a user's intent and signs a
@@ -44,6 +45,9 @@ contract Guardian is EIP712, Ownable, ReentrancyGuard {
     /// @notice Flare FTSO v2 (TestFtsoV2 on Coston2; resolve via ContractRegistry on mainnet).
     TestFtsoV2Interface public ftsoV2;
 
+    /// @notice Verifies Google Confidential Space attestation tokens for trustless signer rotation.
+    IWardAttestor public attestor;
+
     mapping(address user => mapping(uint256 nonce => bool)) public usedNonces;
 
     error NotEnvelopeUser(address caller, address expected);
@@ -56,9 +60,12 @@ contract Guardian is EIP712, Ownable, ReentrancyGuard {
     error NativeValueMismatch();
     error InvalidSlippageBps(uint256 bps);
     error OracleSlippageExceeded(uint256 received, uint256 oracleFloor);
+    error AttestorNotSet();
 
     event WardSignerUpdated(address indexed signer);
+    event WardSignerAttested(address indexed signer);
     event FtsoV2Updated(address indexed ftsoV2);
+    event AttestorUpdated(address indexed attestor);
     event EnvelopeExecuted(
         address indexed user,
         bytes32 indexed envelopeHash,
@@ -82,6 +89,31 @@ contract Guardian is EIP712, Ownable, ReentrancyGuard {
     function setFtsoV2(address _ftsoV2) external onlyOwner {
         ftsoV2 = TestFtsoV2Interface(_ftsoV2);
         emit FtsoV2Updated(_ftsoV2);
+    }
+
+    function setAttestor(address _attestor) external onlyOwner {
+        attestor = IWardAttestor(_attestor);
+        emit AttestorUpdated(_attestor);
+    }
+
+    /// @notice Trustless signer rotation: ANYONE may submit a fresh Google Confidential
+    ///         Space attestation token. If Google's signature verifies and the claims
+    ///         match the attestor's required config (TEE hardware, secure boot, our exact
+    ///         container image), the ward signer becomes the enclave key embedded in the
+    ///         token's eat_nonce claim. No trust in the submitter — or the owner — needed.
+    /// @param rawHeader JWT header, Base64URL-decoded
+    /// @param rawPayload JWT payload, Base64URL-decoded
+    /// @param signature RS256 signature, Base64URL-decoded
+    function rotateSignerByAttestation(
+        bytes calldata rawHeader,
+        bytes calldata rawPayload,
+        bytes calldata signature
+    ) external {
+        if (address(attestor) == address(0)) revert AttestorNotSet();
+        address enclaveSigner = attestor.verifyAttestation(rawHeader, rawPayload, signature);
+        wardSigner = enclaveSigner;
+        emit WardSignerAttested(enclaveSigner);
+        emit WardSignerUpdated(enclaveSigner);
     }
 
     function hashEnvelope(SafetyEnvelope calldata env) public view returns (bytes32) {
