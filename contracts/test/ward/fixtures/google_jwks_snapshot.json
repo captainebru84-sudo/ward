@@ -1,0 +1,48 @@
+{
+  "fetchedAt": "2026-08-02",
+  "jwksUri": "https://www.googleapis.com/service_accounts/v1/metadata/jwk/signer@confidentialspace-sign.iam.gserviceaccount.com",
+  "note": "Snapshot of Google Confidential Space signer JWKS. sampleTokenKey matches the kid in agent/attestation_sample.json.",
+  "sampleTokenKid": "175754fc221f8200adf9e3ee14befcf16fa34129",
+  "sampleTokenKey": {
+    "n": "mhCO6PUntN3RzHnWMEDFVkYlrcag0qlcZH_5Pt4jTDQ8QB-8kkFo--m-KgtAMsxzq6_lmAjAkLA3ZWxY1GYlMsfTjAZnXwMCnEKwJyFHLp3NasROhkI432WDok_Odp4L0On97GTrIct9_Rlf0zERKHlOy1zYBpeUckLz3JzNqdtLijeyqIJctsLni49fVmStklpm0v13Ikl8Jj4XGCxr7Qetq8ty9flBFi1seZX7twFpKuhD88AmFw7FybkfIqvMcEyjUDIUbL-umDonLgXEpSMeS1cD73wIUpbQUl4sJDq-jz7kGI7GAjKD4tPUpxVnwhYNWE0N7QaZQfFaVjnLyw",
+    "alg": "RS256",
+    "kty": "RSA",
+    "kid": "175754fc221f8200adf9e3ee14befcf16fa34129",
+    "e": "AQAB",
+    "use": "sig"
+  },
+  "keys": [
+    {
+      "n": "mhCO6PUntN3RzHnWMEDFVkYlrcag0qlcZH_5Pt4jTDQ8QB-8kkFo--m-KgtAMsxzq6_lmAjAkLA3ZWxY1GYlMsfTjAZnXwMCnEKwJyFHLp3NasROhkI432WDok_Odp4L0On97GTrIct9_Rlf0zERKHlOy1zYBpeUckLz3JzNqdtLijeyqIJctsLni49fVmStklpm0v13Ikl8Jj4XGCxr7Qetq8ty9flBFi1seZX7twFpKuhD88AmFw7FybkfIqvMcEyjUDIUbL-umDonLgXEpSMeS1cD73wIUpbQUl4sJDq-jz7kGI7GAjKD4tPUpxVnwhYNWE0N7QaZQfFaVjnLyw",
+      "alg": "RS256",
+      "kty": "RSA",
+      "kid": "175754fc221f8200adf9e3ee14befcf16fa34129",
+      "e": "AQAB",
+      "use": "sig"
+    },
+    {
+      "e": "AQAB",
+      "n": "uHn0usJsfAXhDsenZqmloWNpOjqn8VfkTzj_5QzHTIUDyCPBMXkDo_zUcoaNZ1mALzcxzqkZEnIozscuomXns77dRWf_PbCknzVXhPHXhsxtnm2Df_udyq8BUoLfcORZWlrW_HgmzCWWoum5rk19aHMqiRVWzookGRs9MWQtLXsHwdHGCl-O6jLLkjF4qkVFILjYUcBBUD53r-TdAs3h0Q-lGLtD7-Ec6CONfQRDAAGYaLoVhcLvomIKVJwSc_ugs21k8hszQlzu1i5FbDtPou0XEGpDcoWbajkYFDrAXmEC4KjjsxMR-YYQuB0GrJk5oQNB2vEoy0QZL0-b7f6Ktw",
+      "use": "sig",
+      "alg": "RS256",
+      "kty": "RSA",
+      "kid": "fe7c4a9e58d54219dfc808512a3ca580c065bfb4"
+    },
+    {
+      "use": "sig",
+      "n": "wN8cCOiG25yyEDaq-KuxykXzUqDfiFgpaRhBoHQqWn2ocr3WspS1t5ToaBWhF9brM9IQwQ3qsdbkAkn9goIoHPqepPnMvpvk5wdow_ummRQ2TvsDUcodf0TCQ9PXDpG76_pOQ7XbQo808Apomh0Tk45_xqWPH2GSAGNd-Mv3M8M5jGO36Y5oIuWAiy617PazWzsc75XYBvMpvLdO9TDdkasw-ke1xHODhybJD6v7ng-g3xZPXiPxmhu7f_Qcxe--5bVN1b9iq__0EGfoRpVgCUusl8b8UmpMJsuvZUNqTdpTXKAC_2GrIXaVTicf35tX1bDmBOFWDsiham82ub8UGw",
+      "alg": "RS256",
+      "kty": "RSA",
+      "kid": "1be6ff7287d640316ddc929e1a8b21fbca7e54e7",
+      "e": "AQAB"
+    },
+    {
+      "n": "1vsh5jTTL8zMJ9evg0FpXgQ54Lj8eApw7hITGVGaHq3SDr8TzYcj423hoPGMjx1HGErYOt3VXHHUvEuze_fLvTPeSEP2G53m26Azcek3PFTSVNyx9o2qwYxwRY5Gv4f7Hrwc6FJ4pRdWRBpFG6aX4j8qMSucogHio8VlDlJVldeKtKkvkz50uMgc3X5ohM0Fiptr-Ho5EYXsmKmu8rvpWtsxx8Iq4GX_2myCJWt1ksYyCD42I0F970WBjuyFopgmPKKYpciUNX17vtovlO-K5X-rDCDBJM3OgdF1VhN5o1MkURvDUW5Okpst2nbCBkVWPmzaVRuDXidmPaY7zOz0mQ",
+      "use": "sig",
+      "e": "AQAB",
+      "alg": "RS256",
+      "kty": "RSA",
+      "kid": "bed6864e0f0fb3e94dab515a4711e3532584709e"
+    }
+  ]
+}
