@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-GUARDIAN_COSTON2 = "0x36A5153A84f6edaaB1ADb3AeF9F6C46ff5592b78"
+GUARDIAN_COSTON2 = "0x5FCDc267ca392B64362957b7FD021719466d1775"
 
 
 class Settings(BaseSettings):

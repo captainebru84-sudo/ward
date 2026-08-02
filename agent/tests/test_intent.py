@@ -9,7 +9,7 @@ from ward_agent.planner import Planner
 from ward_agent.policy import Policy, PolicyEngine
 from ward_agent.signer import WardSigner
 
-GUARDIAN = "0x36A5153A84f6edaaB1ADb3AeF9F6C46ff5592b78"
+GUARDIAN = "0x5FCDc267ca392B64362957b7FD021719466d1775"
 
 
 def draft(**kw) -> IntentDraft:

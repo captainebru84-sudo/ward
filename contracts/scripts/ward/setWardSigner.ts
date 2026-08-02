@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 
-const GUARDIAN = "0x36A5153A84f6edaaB1ADb3AeF9F6C46ff5592b78";
+const GUARDIAN = "0x5FCDc267ca392B64362957b7FD021719466d1775";
 
 async function main() {
     const newSigner = process.env.NEW_WARD_SIGNER;

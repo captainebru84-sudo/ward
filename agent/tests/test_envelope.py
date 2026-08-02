@@ -5,7 +5,7 @@ from ward_agent import feeds
 from ward_agent.envelope import SafetyEnvelope
 
 CHAIN_ID = 114
-GUARDIAN = "0x36A5153A84f6edaaB1ADb3AeF9F6C46ff5592b78"
+GUARDIAN = "0x5FCDc267ca392B64362957b7FD021719466d1775"
 
 SAMPLE = SafetyEnvelope(
     user="0xb7586261637550072E13B8D41bfA62345C55f635",
