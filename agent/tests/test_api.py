@@ -44,6 +44,13 @@ def test_ui_and_tokens():
     assert toks["USDC"]["decimals"] == TOKENS["USDC"].decimals
 
 
+def test_feeds_returns_ticker_prices():
+    client = make_client()
+    feeds = client.get("/feeds").json()
+    assert "FLR" in feeds
+    assert float(feeds["FLR"]["price"]) > 0
+
+
 def test_attestation_unavailable_outside_tee():
     client = make_client()
     resp = client.get("/attestation")

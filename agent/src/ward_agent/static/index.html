@@ -3,162 +3,333 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ward — Safety Envelope Copilot</title>
+<title>Ward — promises, enforced</title>
 <style>
   :root {
-    --bg: #0b0e14; --panel: #121722; --panel2: #171e2c; --line: #232c40;
-    --text: #dbe2f0; --dim: #8593ad; --mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
-    --green: #34d399; --red: #f87171; --amber: #fbbf24; --blue: #60a5fa;
+    --bg: #07090f; --panel: #0e1219; --panel2: #131926; --glass: rgba(19,25,38,.72);
+    --line: #1e2635; --line2: #2a3446;
+    --text: #e6ecf7; --dim: #7e8aa3; --faint: #55617a;
+    --ember1: #ff3d67; --ember2: #ff7847;
+    --green: #2ee6a8; --red: #ff5c6c; --blue: #6aa6ff; --amber: #ffc357;
+    --mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
-    display: flex; flex-direction: column; height: 100vh;
+    font: 14.5px/1.5 "Segoe UI", system-ui, sans-serif;
+    display: flex; flex-direction: column; overflow: hidden;
   }
-  header {
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(900px 500px at 12% -10%, rgba(255,61,103,.12), transparent 60%),
+      radial-gradient(700px 420px at 95% 8%, rgba(255,120,71,.08), transparent 60%),
+      radial-gradient(600px 600px at 70% 110%, rgba(106,166,255,.05), transparent 60%);
   }
-  header h1 { font-size: 18px; margin: 0; letter-spacing: 2px; }
-  header h1 span { color: var(--green); }
-  .tag { color: var(--dim); font-size: 12px; margin-right: auto; }
-  .chip {
-    font-family: var(--mono); font-size: 12px; padding: 3px 10px; border-radius: 99px;
-    border: 1px solid var(--line); background: var(--panel2); color: var(--dim);
-    text-decoration: none; white-space: nowrap;
+
+  /* ---------- ticker ---------- */
+  #ticker {
+    display: flex; align-items: center; gap: 26px; overflow-x: auto; scrollbar-width: none;
+    padding: 8px 18px; border-bottom: 1px solid var(--line);
+    background: rgba(10,13,20,.9); font-family: var(--mono); font-size: 12.5px;
+    position: relative; z-index: 2; white-space: nowrap;
   }
-  a.chip:hover, .chip.btn:hover { border-color: var(--blue); color: var(--text); cursor: pointer; }
-  .chip.wallet.on { color: var(--blue); border-color: #2c5282; }
-  .badge { cursor: pointer; font-weight: 600; }
-  .badge.ok { color: var(--green); border-color: #1d5c44; background: #0d2a20; }
-  .badge.warn { color: var(--amber); border-color: #6b5416; background: #2a2208; }
-  #attest-panel {
-    display: none; border-bottom: 1px solid var(--line); background: var(--panel2);
-    padding: 14px 20px; font-family: var(--mono); font-size: 12.5px;
+  #ticker .src { color: var(--faint); letter-spacing: .12em; font-size: 10.5px; }
+  #ticker .src b { color: var(--ember1); font-weight: 700; }
+  .tk { display: inline-flex; gap: 8px; align-items: baseline; }
+  .tk .sym { color: var(--dim); }
+  .tk .px { color: var(--text); transition: color .15s; }
+  .tk .d { font-size: 11px; }
+  .tk .d.up { color: var(--green); } .tk .d.down { color: var(--red); }
+  .tk.flash-up .px { color: var(--green); }
+  .tk.flash-down .px { color: var(--red); }
+
+  /* ---------- shell ---------- */
+  #shell {
+    flex: 1; display: grid; grid-template-columns: 218px 1fr 372px;
+    min-height: 0; position: relative; z-index: 1;
   }
-  #attest-panel.open { display: block; }
-  #attest-panel table { border-collapse: collapse; }
-  #attest-panel td { padding: 2px 16px 2px 0; vertical-align: top; }
-  #attest-panel td:first-child { color: var(--dim); }
-  .ok-mark { color: var(--green); }
-  #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .msg { max-width: 720px; }
+
+  /* ---------- rail ---------- */
+  #rail {
+    display: flex; flex-direction: column; gap: 14px; padding: 18px 14px;
+    border-right: 1px solid var(--line); background: var(--panel); min-height: 0;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px; }
+  .orb {
+    width: 34px; height: 34px; border-radius: 12px; flex: none;
+    background: linear-gradient(135deg, var(--ember1), var(--ember2));
+    box-shadow: 0 0 22px rgba(255,61,103,.45);
+    display: grid; place-items: center; font-weight: 900; color: #14060a; font-size: 18px;
+  }
+  .brand h1 { font-size: 17px; margin: 0; letter-spacing: 3px; }
+  .brand .sub { font-size: 10.5px; color: var(--dim); letter-spacing: .04em; }
+  nav { display: flex; flex-direction: column; gap: 4px; }
+  nav a {
+    display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px;
+    color: var(--dim); text-decoration: none; font-size: 13.5px; border: 1px solid transparent;
+  }
+  nav a.active {
+    color: var(--text); background: linear-gradient(90deg, rgba(255,61,103,.14), transparent);
+    border-color: rgba(255,61,103,.25);
+  }
+  nav a:hover { color: var(--text); }
+  .railcard {
+    border: 1px solid var(--line); background: var(--glass); border-radius: 12px;
+    padding: 10px 12px; font-size: 12px;
+  }
+  .railcard .t { color: var(--faint); font-size: 10px; letter-spacing: .14em; margin-bottom: 6px; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 99px; margin-right: 6px; }
+  .dot.ok { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+  .dot.warn { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  @keyframes pulse { 50% { opacity: .5; } }
+  .railcard .row { display: flex; justify-content: space-between; gap: 8px; margin: 3px 0; color: var(--dim); }
+  .railcard .row b { color: var(--text); font-family: var(--mono); font-weight: 500; font-size: 11.5px; }
+  .railcard a { color: var(--blue); text-decoration: none; font-family: var(--mono); font-size: 11.5px; }
+  .railcard input {
+    width: 100%; margin-top: 6px; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px;
+    font-family: var(--mono); font-size: 11px; outline: none;
+  }
+  .railcard input:focus { border-color: var(--ember1); }
+  .wbtn {
+    width: 100%; margin-top: 8px; padding: 7px 0; border-radius: 9px; cursor: pointer;
+    border: 1px solid rgba(255,61,103,.4); color: var(--text); font-size: 12.5px; font-weight: 600;
+    background: linear-gradient(90deg, rgba(255,61,103,.18), rgba(255,120,71,.12));
+  }
+  .wbtn:hover { border-color: var(--ember1); }
+  .wbtn.on { border-color: rgba(46,230,168,.4); background: rgba(46,230,168,.08); color: var(--green); font-family: var(--mono); font-weight: 500; }
+  .spacer { flex: 1; }
+
+  /* ---------- chat ---------- */
+  #center { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  #chat { flex: 1; overflow-y: auto; padding: 22px 26px; display: flex; flex-direction: column; gap: 14px; }
+  #hero { margin: 8vh auto 0; text-align: center; max-width: 460px; }
+  #hero .orb { width: 54px; height: 54px; margin: 0 auto 14px; font-size: 28px; border-radius: 18px; }
+  #hero h2 { margin: 0 0 6px; font-size: 22px; }
+  #hero h2 em {
+    font-style: normal; background: linear-gradient(90deg, var(--ember1), var(--ember2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #hero p { color: var(--dim); font-size: 13.5px; margin: 0; }
+  .msg { max-width: 640px; }
   .msg.user { align-self: flex-end; }
   .msg.user .bubble {
-    background: #1e3a5f; border: 1px solid #2c5282; border-radius: 14px 14px 4px 14px;
-    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(255,61,103,.16), rgba(255,120,71,.10));
+    border: 1px solid rgba(255,61,103,.3); border-radius: 14px 14px 4px 14px; padding: 9px 14px;
   }
-  .msg.agent { align-self: flex-start; width: 100%; }
+  .msg.agent { align-self: flex-start; width: 100%; max-width: 660px; }
   .note { color: var(--dim); font-size: 13px; padding: 4px 2px; }
   .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    overflow: hidden;
+    background: var(--glass); border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden; backdrop-filter: blur(6px); cursor: default;
   }
   .card .head {
-    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
-    font-weight: 600; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px; padding: 9px 15px;
+    font-weight: 600; font-size: 13.5px; border-bottom: 1px solid var(--line);
   }
-  .card.signed .head { color: var(--green); background: #0d2a2033; }
-  .card.refused .head { color: var(--red); background: #3a121233; }
+  .card.signed { border-color: rgba(46,230,168,.28); cursor: pointer; }
+  .card.signed:hover { border-color: rgba(46,230,168,.55); }
+  .card.signed .head { color: var(--green); }
+  .card.refused { border-color: rgba(255,92,108,.3); }
+  .card.refused .head { color: var(--red); }
   .card.unsupported .head { color: var(--dim); }
-  .card .body { padding: 12px 16px; }
+  .card .body { padding: 10px 15px; font-size: 13px; color: var(--dim); }
+  .card .review-link { margin-left: auto; font-size: 11.5px; color: var(--dim); font-weight: 400; }
   .parsed {
-    font-family: var(--mono); font-size: 13px; color: var(--blue);
-    padding: 8px 16px; border-bottom: 1px solid var(--line); background: #10192a;
+    font-family: var(--mono); font-size: 12.5px; color: var(--blue);
+    padding: 7px 15px; border-bottom: 1px solid var(--line); background: rgba(106,166,255,.05);
   }
-  .parsed .lbl { color: var(--dim); font-family: inherit; }
-  .grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 10px 18px; margin-bottom: 4px;
+  .parsed .lbl { color: var(--faint); }
+  .violations { margin: 2px 0; padding-left: 18px; }
+  .violations li { color: var(--red); font-family: var(--mono); font-size: 12.5px; margin: 3px 0; }
+  .sumline { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+  .sumline span b { color: var(--faint); font-weight: 400; margin-right: 5px; }
+
+  #suggestions { display: flex; gap: 8px; padding: 0 26px 10px; flex-wrap: wrap; align-items: center; }
+  .chip {
+    font-size: 12px; padding: 5px 12px; border-radius: 99px; cursor: pointer;
+    border: 1px solid var(--line2); background: var(--panel2); color: var(--dim);
   }
-  .kv .k { color: var(--dim); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; }
-  .kv .v { font-family: var(--mono); font-size: 14px; }
-  .kv .v small { color: var(--dim); font-size: 11px; }
-  .hexrow {
-    display: flex; align-items: center; gap: 8px; margin-top: 8px;
-    font-family: var(--mono); font-size: 12px; color: var(--dim);
+  .chip:hover { color: var(--text); border-color: var(--ember1); }
+  #clear-history { margin-left: auto; }
+  #composer { display: flex; gap: 10px; padding: 0 26px 18px; }
+  #prompt {
+    flex: 1; background: var(--panel2); border: 1px solid var(--line2); color: var(--text);
+    border-radius: 12px; padding: 12px 16px; font-size: 14px; outline: none;
   }
-  .hexrow .k { min-width: 72px; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
-  .hexrow code { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .hexrow button {
-    background: var(--panel2); color: var(--dim); border: 1px solid var(--line);
-    border-radius: 6px; font-size: 11px; padding: 2px 8px; cursor: pointer;
-  }
-  .hexrow button:hover { color: var(--text); }
-  .violations { margin: 4px 0 2px; padding-left: 20px; }
-  .violations li { color: var(--red); font-family: var(--mono); font-size: 13px; margin: 3px 0; }
-  .foot {
-    padding: 8px 16px; border-top: 1px solid var(--line); color: var(--dim); font-size: 12px;
-  }
-  .foot a, .exec a { color: var(--blue); text-decoration: none; }
-  .exec {
-    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
-    border-top: 1px solid var(--line); font-size: 13px;
-  }
-  .exec button {
-    background: var(--green); color: #06281c; border: 0; border-radius: 8px;
-    padding: 6px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
-  }
-  .exec button:disabled { opacity: .45; cursor: default; }
-  .exec .status { color: var(--dim); font-family: var(--mono); font-size: 12px; }
-  .exec .status.ok { color: var(--green); }
-  .exec .status.err { color: var(--red); }
-  #composer {
-    display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line);
-    background: var(--panel); flex-wrap: wrap;
-  }
-  #composer input {
-    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
-    border-radius: 10px; padding: 10px 14px; font-size: 14px; outline: none;
-  }
-  #composer input:focus { border-color: var(--blue); }
-  #user-addr { flex: 0 0 340px; font-family: var(--mono); font-size: 12.5px; }
-  #prompt { flex: 1; min-width: 240px; }
+  #prompt:focus { border-color: var(--ember1); box-shadow: 0 0 0 3px rgba(255,61,103,.12); }
   #send {
-    background: var(--green); color: #06281c; border: 0; border-radius: 10px;
-    padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer;
+    border: 0; border-radius: 12px; padding: 0 26px; font-size: 14px; font-weight: 700; cursor: pointer;
+    background: linear-gradient(90deg, var(--ember1), var(--ember2)); color: #14060a;
+    box-shadow: 0 4px 18px rgba(255,61,103,.3);
   }
   #send:disabled { opacity: .5; cursor: wait; }
-  #suggestions { display: flex; gap: 8px; padding: 0 20px 12px; flex-wrap: wrap; background: var(--panel); align-items: center; }
-  #suggestions .chip { cursor: pointer; }
-  #suggestions .chip:hover { color: var(--text); border-color: var(--blue); }
-  #clear-history { margin-left: auto; }
+
+  /* ---------- review ---------- */
+  #review {
+    border-left: 1px solid var(--line); background: var(--panel); min-height: 0;
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  #review .rv-head {
+    padding: 14px 18px 10px; font-size: 11px; letter-spacing: .18em; color: var(--faint);
+    display: flex; align-items: center; gap: 10px;
+    position: sticky; top: 0; z-index: 3; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  #review .rv-head .st { margin-left: auto; letter-spacing: 0; font-size: 11px; font-family: var(--mono); padding: 2px 10px; border-radius: 99px; }
+  .st.signed { color: var(--green); border: 1px solid rgba(46,230,168,.35); }
+  .st.executed { color: #14060a; background: var(--green); font-weight: 700; }
+  .st.expired { color: var(--amber); border: 1px solid rgba(255,195,87,.4); }
+  #rv-body { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+  #rv-empty { color: var(--faint); font-size: 13px; padding: 30px 18px; text-align: center; }
+  .rv-pair { font-family: var(--mono); font-size: 17px; }
+  .rv-pair small { color: var(--dim); font-size: 11.5px; display: block; margin-top: 2px; }
+  .glist { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .g { display: flex; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--glass); align-items: baseline; }
+  .g:last-child { border-bottom: 0; }
+  .g .gi { color: var(--green); font-weight: 700; }
+  .g .gk { color: var(--dim); font-size: 12px; min-width: 118px; }
+  .g .gv { font-family: var(--mono); font-size: 12.5px; margin-left: auto; text-align: right; }
+  .g .gv small { color: var(--faint); }
+  .quote {
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--glass);
+    display: flex; gap: 18px; font-family: var(--mono); font-size: 12px;
+  }
+  .quote div span { display: block; color: var(--faint); font-size: 10px; letter-spacing: .1em; }
+  .attest-mini { font-size: 11.5px; color: var(--dim); border: 1px dashed var(--line2); border-radius: 10px; padding: 8px 10px; }
+  .attest-mini .ok { color: var(--green); }
+  .hexline { display: flex; gap: 8px; align-items: center; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .hexline code { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hexline button { background: none; border: 1px solid var(--line2); color: var(--faint); border-radius: 6px; font-size: 10px; padding: 1px 7px; cursor: pointer; }
+  .hexline button:hover { color: var(--text); }
+  #rv-exec {
+    width: 100%; padding: 12px 0; border: 0; border-radius: 12px; cursor: pointer;
+    font-size: 14.5px; font-weight: 800; letter-spacing: .02em;
+    background: linear-gradient(90deg, var(--ember1), var(--ember2)); color: #14060a;
+    box-shadow: 0 4px 22px rgba(255,61,103,.35);
+  }
+  #rv-exec:disabled { opacity: .45; cursor: default; box-shadow: none; }
+  #rv-status { font-family: var(--mono); font-size: 11.5px; color: var(--dim); min-height: 16px; }
+  #rv-status.ok { color: var(--green); }
+  #rv-status.err { color: var(--red); }
+  #rv-status a { color: var(--blue); text-decoration: none; }
+
+  @media (max-width: 1080px) {
+    body { overflow: hidden; }
+    #shell { display: flex; flex-direction: column; min-height: 0; }
+    #rail {
+      flex-direction: row; align-items: center; gap: 10px; padding: 8px 14px;
+      border-right: 0; border-bottom: 1px solid var(--line); flex-wrap: nowrap; overflow-x: auto;
+    }
+    .brand h1 { font-size: 15px; }
+    .brand .sub { display: none; }
+    .orb { width: 28px; height: 28px; font-size: 15px; border-radius: 9px; }
+    nav { flex-direction: row; flex: none; }
+    nav a { padding: 5px 10px; font-size: 12.5px; white-space: nowrap; }
+    .spacer { display: none; }
+    #rail .railcard { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 10px; margin-left: auto; }
+    #rail .railcard .t, #rail .railcard .row { display: none; }
+    #tee-card #tee-line .row { display: none; }
+    .railcard input { margin-top: 0; width: 150px; }
+    .wbtn { margin-top: 0; width: auto; padding: 6px 12px; white-space: nowrap; }
+    #center { flex: 1; min-height: 0; }
+    /* review pane becomes a slide-in drawer */
+    #review {
+      position: fixed; top: 0; right: 0; height: 100%; width: min(430px, 94vw);
+      z-index: 40; border-left: 1px solid var(--line2);
+      box-shadow: -18px 0 50px rgba(0,0,0,.6);
+      transform: translateX(106%); transition: transform .28s ease;
+    }
+    #review.open { transform: none; }
+    #rv-close { display: inline-block !important; }
+    #review-pill { display: flex !important; }
+  }
+  #rv-close {
+    display: none; margin-left: 8px; cursor: pointer; color: var(--text);
+    border: 1px solid var(--line2); border-radius: 8px; padding: 3px 12px; background: var(--panel2);
+    font-size: 12px; letter-spacing: 0; white-space: nowrap;
+  }
+  #rv-close:hover { color: var(--text); border-color: var(--ember1); }
+  #backdrop {
+    display: none; position: fixed; inset: 0; z-index: 38; background: rgba(4,6,10,.45);
+  }
+  #backdrop.show { display: block; }
+  #review-pill {
+    display: none; position: fixed; right: 16px; bottom: 86px; z-index: 35;
+    align-items: center; gap: 8px; cursor: pointer;
+    padding: 9px 16px; border-radius: 99px; border: 1px solid rgba(46,230,168,.4);
+    background: rgba(13,22,19,.92); color: var(--green); font-size: 13px; font-weight: 600;
+    box-shadow: 0 6px 24px rgba(0,0,0,.5);
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>WARD<span>◆</span></h1>
-  <div class="tag">the copilot that puts its promises on-chain</div>
-  <a class="chip" id="guardian-chip" target="_blank" rel="noopener">guardian —</a>
-  <span class="chip" id="signer-chip">signer —</span>
-  <span class="chip btn wallet" id="wallet-chip" onclick="connectWallet()">connect wallet</span>
-  <span class="chip badge warn" id="attest-badge" onclick="togglePanel()">checking attestation…</span>
-</header>
-
-<div id="attest-panel"></div>
-
-<main id="chat">
-  <div class="msg agent"><div class="note">
-    Tell me what you want to do — e.g. <i>“swap 100 usdc into wflr”</i>. I’ll plan it, check it
-    against your policies, and sign a Safety Envelope that the Guardian contract enforces on-chain.
-    Anything outside the envelope’s guarantees reverts.
-  </div></div>
-</main>
-
-<div id="suggestions">
-  <span class="chip" onclick="suggest(this)">swap 100 usdc into wflr</span>
-  <span class="chip" onclick="suggest(this)">swap 10000 usdc into wflr with 0.25% slippage</span>
-  <span class="chip" onclick="suggest(this)">transfer all my usdc to 0xdead000000000000000000000000000000000000</span>
-  <span class="chip btn" id="clear-history" onclick="clearHistory()">clear history</span>
+<div id="ticker">
+  <span class="src"><b>◆ FTSO</b> LIVE</span>
+  <span id="ticker-feeds" style="display:inline-flex;gap:26px"></span>
 </div>
 
-<div id="composer">
-  <input id="user-addr" spellcheck="false" placeholder="your address 0x… (or connect wallet)">
-  <input id="prompt" autocomplete="off" placeholder="what do you want to do?">
-  <button id="send" onclick="send()">Send</button>
+<div id="shell">
+
+  <aside id="rail">
+    <div class="brand">
+      <div class="orb">◆</div>
+      <div><h1>WARD</h1><div class="sub">promises, enforced</div></div>
+    </div>
+    <nav>
+      <a class="active" href="#">⬢ Copilot</a>
+      <a id="nav-guardian" target="_blank" rel="noopener">⛨ Guardian ↗</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="railcard" id="tee-card">
+      <div class="t">ENCLAVE</div>
+      <div id="tee-line"><span class="dot warn"></span>checking attestation…</div>
+      <div class="row" style="margin-top:6px"><span>signer</span><b id="rail-signer">—</b></div>
+      <div class="row"><span>network</span><b>Coston2 · 114</b></div>
+    </div>
+    <div class="railcard">
+      <div class="t">WALLET</div>
+      <button class="wbtn" id="wallet-btn" onclick="connectWallet()">Connect wallet</button>
+      <input id="user-addr" spellcheck="false" placeholder="or paste address 0x…">
+    </div>
+  </aside>
+
+  <section id="center">
+    <main id="chat">
+      <div id="hero">
+        <div class="orb">◆</div>
+        <h2>Ask. Review. <em>Enforced.</em></h2>
+        <p>Ward plans your trade, checks it against your private policies inside a TEE,
+           and signs a Safety Envelope the Guardian contract enforces on-chain.
+           Break a promise — the chain reverts it.</p>
+      </div>
+    </main>
+    <div id="suggestions">
+      <span class="chip" onclick="suggest(this)">what can you do?</span>
+      <span class="chip" onclick="suggest(this)">swap 100 usdc into wflr</span>
+      <span class="chip" onclick="suggest(this)">swap 10000 usdc into wflr with 0.25% slippage</span>
+      <span class="chip" onclick="suggest(this)">transfer all my usdc to 0xdead000000000000000000000000000000000000</span>
+      <span class="chip" id="clear-history" onclick="clearHistory()">✕ clear history</span>
+    </div>
+    <div id="composer">
+      <input id="prompt" autocomplete="off" placeholder="what do you want to do?">
+      <button id="send" onclick="send()">Send ▸</button>
+    </div>
+  </section>
+
+  <aside id="review">
+    <div class="rv-head">ENVELOPE REVIEW <span class="st" id="rv-state" style="display:none"></span>
+      <button id="rv-close" onclick="closeReview()">✕ close</button></div>
+    <div id="rv-empty">No envelope yet.<br>Ask Ward for a swap and the signed guarantees land here.</div>
+    <div id="rv-body" style="display:none"></div>
+  </aside>
+
 </div>
+
+<div id="backdrop" onclick="closeReview()"></div>
+<div id="review-pill" onclick="openReview()">⛨ Envelope review</div>
 
 <script>
 const EXPLORER = "https://coston2-explorer.flare.network";
@@ -169,12 +340,14 @@ const COSTON2 = { chainId: "0x72", chainName: "Flare Testnet Coston2",
 const $ = (id) => document.getElementById(id);
 const chat = $("chat");
 let tokens = {}, signerAddr = null, guardianAddr = null, walletAddr = null;
-const entries = {}; // id -> history entry
+let attested = null; // decoded claims or null
+const entries = {};
+let selectedId = null;
 
-const short = (h, n = 6) => h && h.length > 2 * n + 4 ? h.slice(0, n + 2) + "…" + h.slice(-n) : h;
+const short = (h, n = 5) => h && h.length > 2 * n + 4 ? h.slice(0, n + 2) + "…" + h.slice(-n) : h;
 const b64url = (s) => JSON.parse(atob(s.replace(/-/g, "+").replace(/_/g, "/")));
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const pad32 = (hexOrBig) => (typeof hexOrBig === "bigint" ? hexOrBig.toString(16) : hexOrBig.replace(/^0x/, "")).padStart(64, "0");
+const pad32 = (v) => (typeof v === "bigint" ? v.toString(16) : v.replace(/^0x/, "")).padStart(64, "0");
 
 function fmtUnits(raw, decimals, maxFrac = 4) {
   const v = BigInt(raw), base = 10n ** BigInt(decimals);
@@ -182,6 +355,44 @@ function fmtUnits(raw, decimals, maxFrac = 4) {
   return whole.toLocaleString() + (frac ? "." + frac : "");
 }
 const decimalsOf = (sym) => tokens[sym]?.decimals ?? 18;
+const decimalsOfAddr = (addr) => Object.values(tokens).find((t) => t.address.toLowerCase() === addr.toLowerCase())?.decimals ?? 18;
+
+/* ---------- ticker ---------- */
+const tickerState = {}; // sym -> { open, last }
+function fmtPrice(p) {
+  if (p >= 1000) return p.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (p >= 1) return p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return p.toLocaleString(undefined, { maximumFractionDigits: 6 });
+}
+async function pollFeeds() {
+  try {
+    const feeds = await fetch("/feeds").then((r) => r.ok ? r.json() : Promise.reject());
+    const host = $("ticker-feeds");
+    for (const [sym, f] of Object.entries(feeds)) {
+      let st = tickerState[sym];
+      if (!st) {
+        st = tickerState[sym] = { open: f.price, last: f.price };
+        const el = document.createElement("span");
+        el.className = "tk"; el.id = "tk-" + sym;
+        el.innerHTML = `<span class="sym">${esc(sym)}</span><span class="px"></span><span class="d"></span>`;
+        host.appendChild(el);
+      }
+      const el = $("tk-" + sym);
+      el.querySelector(".px").textContent = "$" + fmtPrice(f.price);
+      const delta = ((f.price - st.open) / st.open) * 100;
+      const d = el.querySelector(".d");
+      d.textContent = (delta >= 0 ? "▲" : "▼") + Math.abs(delta).toFixed(2) + "%";
+      d.className = "d " + (delta >= 0 ? "up" : "down");
+      if (f.price !== st.last) {
+        el.classList.remove("flash-up", "flash-down");
+        void el.offsetWidth;
+        el.classList.add(f.price > st.last ? "flash-up" : "flash-down");
+        setTimeout(() => el.classList.remove("flash-up", "flash-down"), 900);
+      }
+      st.last = f.price;
+    }
+  } catch { /* agent offline or FTSO hiccup — keep last values */ }
+}
 
 /* ---------- history ---------- */
 const loadHistory = () => JSON.parse(localStorage.getItem("ward-history") || "[]");
@@ -193,7 +404,9 @@ function saveEntry(entry) {
 }
 function clearHistory() {
   localStorage.removeItem("ward-history");
-  chat.querySelectorAll(".msg.hist").forEach((n) => n.remove());
+  chat.querySelectorAll(".msg").forEach((n) => n.remove());
+  for (const k of Object.keys(entries)) delete entries[k];
+  selectedId = null; renderReview(); closeReview(); updatePill();
 }
 
 /* ---------- boot ---------- */
@@ -201,54 +414,45 @@ async function init() {
   $("user-addr").value = localStorage.getItem("ward-user") || "";
   try {
     const [health, signer, toks] = await Promise.all([
-      fetch("/health").then(r => r.json()),
-      fetch("/signer").then(r => r.json()),
-      fetch("/tokens").then(r => r.json()),
+      fetch("/health").then((r) => r.json()),
+      fetch("/signer").then((r) => r.json()),
+      fetch("/tokens").then((r) => r.json()),
     ]);
     tokens = toks; signerAddr = signer.address; guardianAddr = health.guardian;
-    const g = $("guardian-chip");
-    g.textContent = "guardian " + short(guardianAddr);
-    g.href = EXPLORER + "/address/" + guardianAddr;
-    $("signer-chip").textContent = "signer " + short(signerAddr) + (signer.ephemeral ? " · ephemeral" : "");
-  } catch { $("signer-chip").textContent = "agent offline"; }
-  for (const e of loadHistory()) { entries[e.id] = e; render(e, true); }
+    $("nav-guardian").href = EXPLORER + "/address/" + guardianAddr;
+    $("rail-signer").textContent = short(signerAddr);
+  } catch { $("rail-signer").textContent = "offline"; }
+  const hist = loadHistory();
+  for (const e of hist) { entries[e.id] = e; render(e); }
+  const lastEnv = [...hist].reverse().find((e) => e.kind === "envelope");
+  if (lastEnv) selectedId = lastEnv.id;
+  renderReview();
+  updatePill();
+  window.addEventListener("resize", updatePill);
   chat.scrollTop = chat.scrollHeight;
   loadAttestation();
+  pollFeeds(); setInterval(pollFeeds, 4000);
+  setInterval(() => { if (selectedId) tickCountdown(); }, 1000);
   if (window.ethereum?.selectedAddress) connectWallet(true);
 }
 
 async function loadAttestation() {
-  const badge = $("attest-badge"), panel = $("attest-panel");
+  const line = $("tee-line");
   try {
     const r = await fetch("/attestation");
     if (!r.ok) throw new Error();
     const { token } = await r.json();
-    const claims = b64url(token.split(".")[1]);
-    const container = claims.submods?.container || {};
-    const bound = claims.eat_nonce?.toLowerCase() === (signerAddr || "").toLowerCase();
-    badge.textContent = "◉ TEE ATTESTED";
-    badge.classList.replace("warn", "ok");
-    panel.innerHTML = `
-      <table>
-        <tr><td>issuer</td><td>${esc(claims.iss)}</td></tr>
-        <tr><td>hardware</td><td>${esc(claims.hwmodel)} · secboot ${claims.secboot} · dbgstat ${esc(claims.dbgstat)}</td></tr>
-        <tr><td>software</td><td>${esc(claims.swname)}</td></tr>
-        <tr><td>image digest</td><td>${esc(container.image_digest || "?")}</td></tr>
-        <tr><td>enclave signer</td><td>${esc(claims.eat_nonce)}
-          ${bound ? '<span class="ok-mark"> ✓ bound inside the Google-signed token</span>' : ""}</td></tr>
-      </table>
-      <div style="margin-top:8px;color:var(--dim)">
-        This token is verifiable on-chain: WardAttestor checks Google’s signature and these claims,
-        then Guardian trusts only the key in <code>eat_nonce</code>. Anyone can submit it — replays are harmless.
-      </div>`;
+    attested = b64url(token.split(".")[1]);
+    const digest = attested.submods?.container?.image_digest || "";
+    line.innerHTML = `<span class="dot ok"></span><b style="color:var(--green);font-size:12px">TEE ATTESTED</b>
+      <div class="row" style="margin-top:4px"><span>hw</span><b>${esc(attested.hwmodel)}</b></div>
+      <div class="row"><span>image</span><b title="${esc(digest)}">${esc(short(digest.replace("sha256:", ""), 4))}</b></div>`;
   } catch {
-    badge.textContent = "○ NOT ATTESTED — LOCAL DEV";
-    panel.innerHTML = `<div style="color:var(--dim)">Running outside Confidential Space:
-      no attestation token available. In the TEE deployment this badge shows the Google-signed
-      claims binding the image digest and the enclave’s signer key.</div>`;
+    attested = null;
+    line.innerHTML = `<span class="dot warn"></span><span style="color:var(--amber);font-size:12px">LOCAL DEV — not attested</span>`;
   }
+  renderReview();
 }
-const togglePanel = () => $("attest-panel").classList.toggle("open");
 
 /* ---------- wallet ---------- */
 async function connectWallet(silent) {
@@ -266,88 +470,61 @@ async function connectWallet(silent) {
     walletAddr = addr;
     $("user-addr").value = addr;
     localStorage.setItem("ward-user", addr);
-    const chip = $("wallet-chip");
-    chip.textContent = "wallet " + short(addr);
-    chip.classList.add("on");
+    const btn = $("wallet-btn");
+    btn.textContent = "◉ " + short(addr);
+    btn.classList.add("on");
   } catch (e) { if (!silent) alert("Wallet connection refused: " + (e.message || e)); }
 }
 window.ethereum?.on?.("accountsChanged", ([addr]) => {
   walletAddr = addr || null;
-  const chip = $("wallet-chip");
-  chip.textContent = addr ? "wallet " + short(addr) : "connect wallet";
-  chip.classList.toggle("on", !!addr);
+  const btn = $("wallet-btn");
+  btn.textContent = addr ? "◉ " + short(addr) : "Connect wallet";
+  btn.classList.toggle("on", !!addr);
   if (addr) { $("user-addr").value = addr; localStorage.setItem("ward-user", addr); }
 });
 
-/* ---------- rendering ---------- */
-function render(entry, fromHistory) {
+/* ---------- chat rendering ---------- */
+function render(entry) {
+  $("hero")?.remove();
   const div = document.createElement("div");
   div.dataset.entry = entry.id;
   if (entry.role === "user") {
-    div.className = "msg user" + (fromHistory ? " hist" : "");
+    div.className = "msg user";
     div.innerHTML = `<div class="bubble">${esc(entry.text)}</div>`;
   } else {
-    div.className = "msg agent" + (fromHistory ? " hist" : "");
+    div.className = "msg agent";
     div.innerHTML =
-      entry.kind === "envelope" ? envelopeCard(entry) :
+      entry.kind === "envelope" ? envelopeChatCard(entry) :
       entry.kind === "refused" ? refusedCard(entry.payload) :
       entry.kind === "unsupported" ? unsupportedCard(entry.payload) :
+      entry.kind === "about" ? aboutCard() :
       `<div class="note" style="color:var(--red)">${esc(entry.payload)}</div>`;
+    if (entry.kind === "envelope") {
+      div.querySelector(".card").onclick = () => { selectedId = entry.id; renderReview(); if (isNarrow()) openReview(); };
+    }
   }
   chat.appendChild(div);
   return div;
 }
 
 const parsedLine = (p) => p ? `
-  <div class="parsed"><span class="lbl">parsed intent →</span>
+  <div class="parsed"><span class="lbl">parsed intent → </span>
     swap ${fmtUnits(p.amount_in, decimalsOf(p.token_in))} ${esc(p.token_in)} → ${esc(p.token_out)}
     ${p.max_slippage_bps != null ? ` · slippage ${p.max_slippage_bps} bps` : ""}
   </div>` : "";
 
-function hexRow(label, value) {
-  const id = "h" + Math.random().toString(36).slice(2);
-  return `<div class="hexrow"><span class="k">${label}</span>
-    <code id="${id}" title="${esc(value)}">${short(value, 20)}</code>
-    <button onclick="navigator.clipboard.writeText(document.getElementById('${id}').title)">copy</button></div>`;
-}
-
-function execFooter(entry) {
-  if (entry.txHash) {
-    return `<div class="exec"><span class="status ok">✓ executed on-chain</span>
-      <a href="${EXPLORER}/tx/${esc(entry.txHash)}" target="_blank" rel="noopener">view transaction</a></div>`;
-  }
-  const expired = Date.now() / 1000 > Number(entry.payload.envelope.deadline);
-  return `<div class="exec">
-    <button id="exec-${entry.id}" onclick="execEnvelope('${entry.id}')" ${expired ? "disabled" : ""}>
-      ${expired ? "envelope expired" : "Execute"}</button>
-    <span class="status" id="status-${entry.id}">${expired ? "ask for a fresh envelope" : "sends guardian.execute via your wallet"}</span>
-  </div>`;
-}
-
-function envelopeCard(entry) {
-  const d = entry.payload, env = d.envelope, q = d.quote;
+function envelopeChatCard(entry) {
+  const d = entry.payload, q = d.quote;
   const [inSym, outSym] = q.pair.split("->");
-  const dIn = decimalsOf(inSym), dOut = decimalsOf(outSym);
-  const deadline = new Date(Number(env.deadline) * 1000);
   return `<div class="card signed">
-    <div class="head">✓ Signed Safety Envelope <span style="margin-left:auto;font-family:var(--mono);font-size:12px">${esc(q.pair)}</span></div>
+    <div class="head">✓ Safety Envelope signed
+      <span class="review-link">${entry.txHash ? "executed ✓ · " : ""}review →</span></div>
     ${parsedLine(d.parsedIntent)}
-    <div class="body">
-      <div class="grid">
-        <div class="kv"><div class="k">max spend</div><div class="v">${fmtUnits(env.maxAmountIn, dIn)} <small>${esc(inSym)}</small></div></div>
-        <div class="kv"><div class="k">min received</div><div class="v">${fmtUnits(q.minOut, dOut)} <small>${esc(outSym)}</small></div></div>
-        <div class="kv"><div class="k">ftso fair value</div><div class="v">${fmtUnits(q.fairOut, dOut)} <small>${esc(outSym)}</small></div></div>
-        <div class="kv"><div class="k">oracle slippage cap</div><div class="v">${q.maxSlippageBps} <small>bps</small></div></div>
-        <div class="kv"><div class="k">deadline</div><div class="v">${deadline.toLocaleTimeString()}</div></div>
-        <div class="kv"><div class="k">target · selector</div><div class="v" title="${esc(env.target)}">${short(env.target)} <small>${esc(env.selector)}</small></div></div>
-      </div>
-      ${hexRow("signature", d.signature)}
-      ${hexRow("calldata", d.calldata)}
-    </div>
-    ${execFooter(entry)}
-    <div class="foot">Enforced by
-      <a href="${EXPLORER}/address/${esc(d.guardian)}" target="_blank" rel="noopener">Guardian ${short(d.guardian)}</a>
-      — break any bound above and the transaction reverts on-chain.</div>
+    <div class="body"><div class="sumline">
+      <span><b>spend</b>${fmtUnits(d.envelope.maxAmountIn, decimalsOf(inSym))} ${esc(inSym)}</span>
+      <span><b>min out</b>${fmtUnits(q.minOut, decimalsOf(outSym))} ${esc(outSym)}</span>
+      <span><b>oracle cap</b>${q.maxSlippageBps} bps</span>
+    </div></div>
   </div>`;
 }
 
@@ -355,16 +532,124 @@ const refusedCard = (detail) => `<div class="card refused">
   <div class="head">✕ Policy refused</div>
   ${parsedLine(detail.parsedIntent)}
   <div class="body"><ul class="violations">
-    ${(detail.violations || []).map(v => `<li>${esc(v)}</li>`).join("")}
-  </ul></div>
-  <div class="foot">The model proposes; the policy engine disposes. Nothing was signed.</div>
+    ${(detail.violations || []).map((v) => `<li>${esc(v)}</li>`).join("")}
+  </ul>
+  <div style="color:var(--faint);font-size:11.5px;margin-top:4px">The model proposes; the policy engine disposes. Nothing was signed.</div></div>
 </div>`;
 
 const unsupportedCard = (msg) => `<div class="card unsupported">
   <div class="head">— Outside my mandate</div>
-  <div class="body" style="color:var(--dim)">${esc(msg)}</div>
-  <div class="foot">Ward only signs envelopes for actions its policy engine can bound. Nothing was signed.</div>
+  <div class="body">${esc(msg)}
+  <div style="color:var(--dim);font-size:12px;margin-top:6px">
+    I sign swaps between ${esc(Object.keys(tokens).join(" and ") || "the configured tokens")} — any amount, any phrasing,
+    e.g. <i>“swap 250 usdc into wflr”</i>. Anything my policy engine can’t bound, I refuse to sign.</div></div>
 </div>`;
+
+const aboutCard = () => `<div class="card">
+  <div class="head">◆ I’m Ward</div>
+  <div class="body">
+    I’m an AI transaction copilot whose promises are enforced on-chain.
+    Tell me a trade in plain language — e.g. <i>“swap 250 usdc into wflr”</i> or
+    <i>“swap 50 usdc with 0.3% slippage”</i> — and I will:
+    <ul style="margin:8px 0 4px;padding-left:20px;color:var(--dim)">
+      <li>plan it and quote fair value from Flare’s <b style="color:var(--text)">FTSO oracle</b> (live prices in the ticker above)</li>
+      <li>check it against your private policy — spend caps, allowed protocols, slippage limits</li>
+      <li>sign a <b style="color:var(--text)">Safety Envelope</b>: hard bounds the Guardian contract enforces — break one and the tx reverts</li>
+    </ul>
+    Right now I trade ${esc(Object.keys(tokens).join(" ↔ ") || "demo tokens")} on Coston2.
+    I refuse anything I can’t bound — transfers, approvals, “send it all” — by design.
+  </div>
+</div>`;
+
+/* ---------- review drawer (narrow screens) ---------- */
+const isNarrow = () => matchMedia("(max-width: 1080px)").matches;
+function openReview() {
+  $("review").classList.add("open");
+  $("review-pill").style.display = "none";
+  if (isNarrow()) $("backdrop").classList.add("show");
+}
+function closeReview() {
+  $("review").classList.remove("open");
+  $("backdrop").classList.remove("show");
+  updatePill();
+}
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeReview(); });
+function updatePill() {
+  const hasEnvelope = Object.values(entries).some((e) => e.kind === "envelope");
+  $("review-pill").style.display =
+    isNarrow() && hasEnvelope && !$("review").classList.contains("open") ? "flex" : "none";
+}
+
+/* ---------- review pane ---------- */
+function hexLine(label, value) {
+  const id = "h" + Math.random().toString(36).slice(2);
+  return `<div class="hexline"><span style="min-width:64px;letter-spacing:.1em;font-size:10px">${label}</span>
+    <code id="${id}" title="${esc(value)}">${short(value, 14)}</code>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('${id}').title)">copy</button></div>`;
+}
+
+function renderReview() {
+  const entry = entries[selectedId];
+  const body = $("rv-body"), empty = $("rv-empty"), state = $("rv-state");
+  if (!entry || entry.kind !== "envelope") {
+    body.style.display = "none"; empty.style.display = "block"; state.style.display = "none";
+    return;
+  }
+  empty.style.display = "none"; body.style.display = "flex"; state.style.display = "inline-block";
+  const d = entry.payload, env = d.envelope, q = d.quote;
+  const [inSym, outSym] = q.pair.split("->");
+  const dIn = decimalsOf(inSym), dOut = decimalsOf(outSym);
+  const expired = Date.now() / 1000 > Number(env.deadline);
+  state.textContent = entry.txHash ? "EXECUTED" : expired ? "EXPIRED" : "SIGNED";
+  state.className = "st " + (entry.txHash ? "executed" : expired ? "expired" : "signed");
+  body.innerHTML = `
+    <div class="rv-pair">${esc(inSym)} → ${esc(outSym)}
+      <small>envelope #…${esc(env.nonce.slice(-6))} · signed by ${short(signerAddr || "?")}</small></div>
+    <div class="quote">
+      <div><span>FTSO FAIR</span>${fmtUnits(q.fairOut, dOut)} ${esc(outSym)}</div>
+      <div><span>GUARANTEED MIN</span>${fmtUnits(q.minOut, dOut)} ${esc(outSym)}</div>
+    </div>
+    <div class="glist">
+      <div class="g"><span class="gi">✓</span><span class="gk">max spend</span>
+        <span class="gv">${fmtUnits(env.maxAmountIn, dIn)} <small>${esc(inSym)}</small></span></div>
+      <div class="g"><span class="gi">✓</span><span class="gk">min received</span>
+        <span class="gv">${fmtUnits(env.minOut, dOut)} <small>${esc(outSym)}</small></span></div>
+      <div class="g"><span class="gi">✓</span><span class="gk">FTSO price floor</span>
+        <span class="gv">within ${q.maxSlippageBps} <small>bps of fair</small></span></div>
+      <div class="g"><span class="gi">✓</span><span class="gk">only target</span>
+        <span class="gv" title="${esc(env.target)}">${short(env.target)} <small>${esc(env.selector)}</small></span></div>
+      <div class="g"><span class="gi">✓</span><span class="gk">deadline</span>
+        <span class="gv" id="rv-deadline">—</span></div>
+      <div class="g"><span class="gi">✓</span><span class="gk">single use</span>
+        <span class="gv">nonce burns on execute</span></div>
+    </div>
+    <div class="attest-mini">${attested
+      ? `<span class="ok">◉ signer attested</span> — key lives in ${esc(attested.hwmodel)}, bound inside a Google-signed token, verified on-chain by WardAttestor.`
+      : `○ local dev signer — in the TEE deployment this envelope is signed by a hardware-attested key.`}</div>
+    ${hexLine("SIGNATURE", d.signature)}
+    ${hexLine("CALLDATA", d.calldata)}
+    ${entry.txHash
+      ? `<div id="rv-status" class="ok">✓ executed on-chain — <a href="${EXPLORER}/tx/${esc(entry.txHash)}" target="_blank" rel="noopener">view transaction ↗</a></div>`
+      : `<button id="rv-exec" onclick="execEnvelope('${entry.id}')" ${expired ? "disabled" : ""}>${expired ? "Envelope expired" : "⛨ Execute through Guardian"}</button>
+         <div id="rv-status">${expired ? "ask for a fresh envelope" : "checks allowance, then sends guardian.execute via your wallet"}</div>`}
+  `;
+  tickCountdown();
+}
+
+function tickCountdown() {
+  const entry = entries[selectedId];
+  const el = $("rv-deadline");
+  if (!entry || !el) return;
+  const left = Number(entry.payload.envelope.deadline) - Math.floor(Date.now() / 1000);
+  if (left <= 0) {
+    el.textContent = "expired";
+    el.style.color = "var(--amber)";
+    if (!entry.txHash && $("rv-exec") && !$("rv-exec").disabled) renderReview();
+  } else {
+    el.textContent = Math.floor(left / 60) + "m " + (left % 60) + "s left";
+    el.style.color = left < 60 ? "var(--amber)" : "";
+  }
+}
 
 /* ---------- execution ---------- */
 const rpc = (method, params) => window.ethereum.request({ method, params });
@@ -381,42 +666,37 @@ async function waitReceipt(txHash) {
 async function execEnvelope(id) {
   const entry = entries[id];
   const d = entry.payload, env = d.envelope;
-  const btn = $("exec-" + id), status = $("status-" + id);
-  const say = (msg, cls = "") => { status.textContent = msg; status.className = "status " + cls; };
+  const btn = $("rv-exec"), status = $("rv-status");
+  const say = (msg, cls = "") => { if (status) { status.textContent = msg; status.className = cls; } };
   if (!window.ethereum) return say("no wallet detected — install MetaMask", "err");
   btn.disabled = true;
   try {
     await connectWallet(true);
     const from = walletAddr;
-    if (!from || from.toLowerCase() !== env.user.toLowerCase())
+    if (!from || from.toLowerCase() !== env.user.toLowerCase()) {
+      btn.disabled = false;
       return say(`connected wallet must be the envelope user ${short(env.user)}`, "err");
-
+    }
     const need = BigInt(env.maxAmountIn);
-    const dIn = Object.values(tokens).find((t) => t.address.toLowerCase() === env.tokenIn.toLowerCase())?.decimals ?? 18;
     const allowanceHex = await rpc("eth_call", [{
-      to: env.tokenIn,
-      data: "0xdd62ed3e" + pad32(env.user) + pad32(d.guardian),
+      to: env.tokenIn, data: "0xdd62ed3e" + pad32(env.user) + pad32(d.guardian),
     }, "latest"]);
     if (BigInt(allowanceHex) < need) {
-      say("wallet: approve Guardian to pull " + fmtUnits(env.maxAmountIn, dIn) + "…");
+      say("wallet: approve Guardian to pull " + fmtUnits(env.maxAmountIn, decimalsOfAddr(env.tokenIn)) + "…");
       const approveTx = await rpc("eth_sendTransaction", [{
-        from, to: env.tokenIn,
-        data: "0x095ea7b3" + pad32(d.guardian) + pad32(need),
+        from, to: env.tokenIn, data: "0x095ea7b3" + pad32(d.guardian) + pad32(need),
       }]);
       say("approval pending…");
       const ar = await waitReceipt(approveTx);
-      if (ar.status !== "0x1") return say("approval reverted", "err");
+      if (ar.status !== "0x1") { btn.disabled = false; return say("approval reverted", "err"); }
     }
-
     say("encoding guardian.execute…");
     const r = await fetch("/execute-calldata", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ envelope: env, signature: d.signature, calldata: d.calldata }),
     });
-    if (!r.ok) return say("encode failed: " + (await r.text()), "err");
+    if (!r.ok) { btn.disabled = false; return say("encode failed: " + (await r.text()), "err"); }
     const { to, data } = await r.json();
-
     say("wallet: confirm the execute transaction…");
     const txHash = await rpc("eth_sendTransaction", [{ from, to, data }]);
     say("executing on-chain…");
@@ -424,25 +704,39 @@ async function execEnvelope(id) {
     if (receipt.status === "0x1") {
       entry.txHash = txHash;
       saveEntry(entry);
-      btn.closest(".exec").outerHTML = execFooter(entry);
+      const chatCard = chat.querySelector(`[data-entry="${entry.id}"]`);
+      if (chatCard) { chatCard.innerHTML = envelopeChatCard(entry); chatCard.querySelector(".card").onclick = () => { selectedId = entry.id; renderReview(); }; }
+      renderReview();
     } else {
       say("reverted — Guardian refused the execution", "err");
       btn.disabled = false;
     }
   } catch (e) {
     say(e?.message || String(e), "err");
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
   }
 }
 
-/* ---------- chat ---------- */
+/* ---------- send ---------- */
 function suggest(el) { $("prompt").value = el.textContent; $("prompt").focus(); }
 
 async function send() {
   const text = $("prompt").value.trim();
   const user = $("user-addr").value.trim();
   if (!text) return;
-  if (!/^0x[0-9a-fA-F]{40}$/.test(user)) return alert("Enter a valid 0x address or connect a wallet.");
+
+  // meta questions get a local answer — no signing pipeline involved
+  if (/^(hi|hello|hey|gm|yo|sup)\b|what can (you|u) do|who are (you|u)|about (you|u|ur ?self|yourself)|^help\b/i.test(text)) {
+    const userEntry = { id: "u" + Date.now(), role: "user", text };
+    entries[userEntry.id] = userEntry; render(userEntry); saveEntry(userEntry);
+    const entry = { id: "a" + Date.now(), role: "agent", kind: "about" };
+    entries[entry.id] = entry; render(entry); saveEntry(entry);
+    $("prompt").value = "";
+    chat.scrollTop = chat.scrollHeight;
+    return;
+  }
+
+  if (!/^0x[0-9a-fA-F]{40}$/.test(user)) return alert("Connect a wallet or paste a valid 0x address in the rail.");
   localStorage.setItem("ward-user", user);
   $("prompt").value = "";
   const userEntry = { id: "u" + Date.now(), role: "user", text };
@@ -453,8 +747,7 @@ async function send() {
   $("send").disabled = true;
   try {
     const r = await fetch("/intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user, text }),
     });
     const body = await r.json();
@@ -465,6 +758,8 @@ async function send() {
     else { entry.kind = "error"; entry.payload = "agent error: " + JSON.stringify(body.detail ?? r.status); }
     entries[entry.id] = entry; saveEntry(entry);
     pending.remove(); render(entry);
+    if (entry.kind === "envelope") { selectedId = entry.id; renderReview(); if (isNarrow()) openReview(); }
+    updatePill();
   } catch (e) {
     pending.innerHTML = `<div class="note" style="color:var(--red)">agent unreachable: ${esc(e.message)}</div>`;
   } finally {

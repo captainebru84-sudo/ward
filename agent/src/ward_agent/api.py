@@ -12,6 +12,7 @@ from ward_agent.attestation import DEFAULT_AUDIENCE, NotInTee, fetch_attestation
 from ward_agent.chain import FtsoReader, encode_execute, get_w3
 from ward_agent.config import Settings, get_settings
 from ward_agent.envelope import SafetyEnvelope
+from ward_agent.feeds import feed_id
 from ward_agent.intent import IntentParser, UnsupportedIntent
 from ward_agent.planner import Planner, SwapIntent, TokenInfo, TxPlan, build_envelope
 from ward_agent.policy import PolicyEngine
@@ -21,6 +22,14 @@ import json
 from pathlib import Path
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+TICKER_FEEDS = [
+    ("FLR", feed_id("FLR/USD")),
+    ("BTC", feed_id("BTC/USD")),
+    ("ETH", feed_id("ETH/USD")),
+    ("XRP", feed_id("XRP/USD")),
+    ("USDC", feed_id("USDC/USD")),
+]
 
 
 class PolicyRefusal(Exception):
@@ -119,6 +128,17 @@ def create_app(service: AgentService | None = None) -> FastAPI:
     @app.get("/tokens")
     def tokens() -> dict:
         return {sym: t.model_dump() for sym, t in svc.planner.tokens.items()}
+
+    @app.get("/feeds")
+    def feeds() -> dict:
+        try:
+            results = svc.planner.ftso_read([fid for _, fid in TICKER_FEEDS])
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"FTSO read failed: {e}")
+        return {
+            sym: {"value": str(value), "decimals": decimals, "price": value / 10**decimals}
+            for (sym, _), (value, decimals) in zip(TICKER_FEEDS, results)
+        }
 
     @app.get("/signer")
     def signer() -> dict:
