@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ward — Safety Envelope Copilot</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #121722; --panel2: #171e2c; --line: #232c40;
+    --text: #dbe2f0; --dim: #8593ad; --mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    --green: #34d399; --red: #f87171; --amber: #fbbf24; --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
+    display: flex; flex-direction: column; height: 100vh;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: 2px; }
+  header h1 span { color: var(--green); }
+  .tag { color: var(--dim); font-size: 12px; margin-right: auto; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; padding: 3px 10px; border-radius: 99px;
+    border: 1px solid var(--line); background: var(--panel2); color: var(--dim);
+    text-decoration: none; white-space: nowrap;
+  }
+  a.chip:hover, .chip.btn:hover { border-color: var(--blue); color: var(--text); cursor: pointer; }
+  .chip.wallet.on { color: var(--blue); border-color: #2c5282; }
+  .badge { cursor: pointer; font-weight: 600; }
+  .badge.ok { color: var(--green); border-color: #1d5c44; background: #0d2a20; }
+  .badge.warn { color: var(--amber); border-color: #6b5416; background: #2a2208; }
+  #attest-panel {
+    display: none; border-bottom: 1px solid var(--line); background: var(--panel2);
+    padding: 14px 20px; font-family: var(--mono); font-size: 12.5px;
+  }
+  #attest-panel.open { display: block; }
+  #attest-panel table { border-collapse: collapse; }
+  #attest-panel td { padding: 2px 16px 2px 0; vertical-align: top; }
+  #attest-panel td:first-child { color: var(--dim); }
+  .ok-mark { color: var(--green); }
+  #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 720px; }
+  .msg.user { align-self: flex-end; }
+  .msg.user .bubble {
+    background: #1e3a5f; border: 1px solid #2c5282; border-radius: 14px 14px 4px 14px;
+    padding: 10px 14px;
+  }
+  .msg.agent { align-self: flex-start; width: 100%; }
+  .note { color: var(--dim); font-size: 13px; padding: 4px 2px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden;
+  }
+  .card .head {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    font-weight: 600; border-bottom: 1px solid var(--line);
+  }
+  .card.signed .head { color: var(--green); background: #0d2a2033; }
+  .card.refused .head { color: var(--red); background: #3a121233; }
+  .card.unsupported .head { color: var(--dim); }
+  .card .body { padding: 12px 16px; }
+  .parsed {
+    font-family: var(--mono); font-size: 13px; color: var(--blue);
+    padding: 8px 16px; border-bottom: 1px solid var(--line); background: #10192a;
+  }
+  .parsed .lbl { color: var(--dim); font-family: inherit; }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px 18px; margin-bottom: 4px;
+  }
+  .kv .k { color: var(--dim); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; }
+  .kv .v { font-family: var(--mono); font-size: 14px; }
+  .kv .v small { color: var(--dim); font-size: 11px; }
+  .hexrow {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px;
+    font-family: var(--mono); font-size: 12px; color: var(--dim);
+  }
+  .hexrow .k { min-width: 72px; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  .hexrow code { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hexrow button {
+    background: var(--panel2); color: var(--dim); border: 1px solid var(--line);
+    border-radius: 6px; font-size: 11px; padding: 2px 8px; cursor: pointer;
+  }
+  .hexrow button:hover { color: var(--text); }
+  .violations { margin: 4px 0 2px; padding-left: 20px; }
+  .violations li { color: var(--red); font-family: var(--mono); font-size: 13px; margin: 3px 0; }
+  .foot {
+    padding: 8px 16px; border-top: 1px solid var(--line); color: var(--dim); font-size: 12px;
+  }
+  .foot a, .exec a { color: var(--blue); text-decoration: none; }
+  .exec {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    border-top: 1px solid var(--line); font-size: 13px;
+  }
+  .exec button {
+    background: var(--green); color: #06281c; border: 0; border-radius: 8px;
+    padding: 6px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .exec button:disabled { opacity: .45; cursor: default; }
+  .exec .status { color: var(--dim); font-family: var(--mono); font-size: 12px; }
+  .exec .status.ok { color: var(--green); }
+  .exec .status.err { color: var(--red); }
+  #composer {
+    display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line);
+    background: var(--panel); flex-wrap: wrap;
+  }
+  #composer input {
+    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 10px 14px; font-size: 14px; outline: none;
+  }
+  #composer input:focus { border-color: var(--blue); }
+  #user-addr { flex: 0 0 340px; font-family: var(--mono); font-size: 12.5px; }
+  #prompt { flex: 1; min-width: 240px; }
+  #send {
+    background: var(--green); color: #06281c; border: 0; border-radius: 10px;
+    padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  #send:disabled { opacity: .5; cursor: wait; }
+  #suggestions { display: flex; gap: 8px; padding: 0 20px 12px; flex-wrap: wrap; background: var(--panel); align-items: center; }
+  #suggestions .chip { cursor: pointer; }
+  #suggestions .chip:hover { color: var(--text); border-color: var(--blue); }
+  #clear-history { margin-left: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>WARD<span>◆</span></h1>
+  <div class="tag">the copilot that puts its promises on-chain</div>
+  <a class="chip" id="guardian-chip" target="_blank" rel="noopener">guardian —</a>
+  <span class="chip" id="signer-chip">signer —</span>
+  <span class="chip btn wallet" id="wallet-chip" onclick="connectWallet()">connect wallet</span>
+  <span class="chip badge warn" id="attest-badge" onclick="togglePanel()">checking attestation…</span>
+</header>
+
+<div id="attest-panel"></div>
+
+<main id="chat">
+  <div class="msg agent"><div class="note">
+    Tell me what you want to do — e.g. <i>“swap 100 usdc into wflr”</i>. I’ll plan it, check it
+    against your policies, and sign a Safety Envelope that the Guardian contract enforces on-chain.
+    Anything outside the envelope’s guarantees reverts.
+  </div></div>
+</main>
+
+<div id="suggestions">
+  <span class="chip" onclick="suggest(this)">swap 100 usdc into wflr</span>
+  <span class="chip" onclick="suggest(this)">swap 10000 usdc into wflr with 0.25% slippage</span>
+  <span class="chip" onclick="suggest(this)">transfer all my usdc to 0xdead000000000000000000000000000000000000</span>
+  <span class="chip btn" id="clear-history" onclick="clearHistory()">clear history</span>
+</div>
+
+<div id="composer">
+  <input id="user-addr" spellcheck="false" placeholder="your address 0x… (or connect wallet)">
+  <input id="prompt" autocomplete="off" placeholder="what do you want to do?">
+  <button id="send" onclick="send()">Send</button>
+</div>
+
+<script>
+const EXPLORER = "https://coston2-explorer.flare.network";
+const COSTON2 = { chainId: "0x72", chainName: "Flare Testnet Coston2",
+  rpcUrls: ["https://coston2-api.flare.network/ext/C/rpc"],
+  nativeCurrency: { name: "Coston2 Flare", symbol: "C2FLR", decimals: 18 },
+  blockExplorerUrls: [EXPLORER] };
+const $ = (id) => document.getElementById(id);
+const chat = $("chat");
+let tokens = {}, signerAddr = null, guardianAddr = null, walletAddr = null;
+const entries = {}; // id -> history entry
+
+const short = (h, n = 6) => h && h.length > 2 * n + 4 ? h.slice(0, n + 2) + "…" + h.slice(-n) : h;
+const b64url = (s) => JSON.parse(atob(s.replace(/-/g, "+").replace(/_/g, "/")));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad32 = (hexOrBig) => (typeof hexOrBig === "bigint" ? hexOrBig.toString(16) : hexOrBig.replace(/^0x/, "")).padStart(64, "0");
+
+function fmtUnits(raw, decimals, maxFrac = 4) {
+  const v = BigInt(raw), base = 10n ** BigInt(decimals);
+  const whole = v / base, frac = (v % base).toString().padStart(decimals, "0").slice(0, maxFrac).replace(/0+$/, "");
+  return whole.toLocaleString() + (frac ? "." + frac : "");
+}
+const decimalsOf = (sym) => tokens[sym]?.decimals ?? 18;
+
+/* ---------- history ---------- */
+const loadHistory = () => JSON.parse(localStorage.getItem("ward-history") || "[]");
+function saveEntry(entry) {
+  const h = loadHistory();
+  const i = h.findIndex((e) => e.id === entry.id);
+  if (i >= 0) h[i] = entry; else h.push(entry);
+  localStorage.setItem("ward-history", JSON.stringify(h.slice(-60)));
+}
+function clearHistory() {
+  localStorage.removeItem("ward-history");
+  chat.querySelectorAll(".msg.hist").forEach((n) => n.remove());
+}
+
+/* ---------- boot ---------- */
+async function init() {
+  $("user-addr").value = localStorage.getItem("ward-user") || "";
+  try {
+    const [health, signer, toks] = await Promise.all([
+      fetch("/health").then(r => r.json()),
+      fetch("/signer").then(r => r.json()),
+      fetch("/tokens").then(r => r.json()),
+    ]);
+    tokens = toks; signerAddr = signer.address; guardianAddr = health.guardian;
+    const g = $("guardian-chip");
+    g.textContent = "guardian " + short(guardianAddr);
+    g.href = EXPLORER + "/address/" + guardianAddr;
+    $("signer-chip").textContent = "signer " + short(signerAddr) + (signer.ephemeral ? " · ephemeral" : "");
+  } catch { $("signer-chip").textContent = "agent offline"; }
+  for (const e of loadHistory()) { entries[e.id] = e; render(e, true); }
+  chat.scrollTop = chat.scrollHeight;
+  loadAttestation();
+  if (window.ethereum?.selectedAddress) connectWallet(true);
+}
+
+async function loadAttestation() {
+  const badge = $("attest-badge"), panel = $("attest-panel");
+  try {
+    const r = await fetch("/attestation");
+    if (!r.ok) throw new Error();
+    const { token } = await r.json();
+    const claims = b64url(token.split(".")[1]);
+    const container = claims.submods?.container || {};
+    const bound = claims.eat_nonce?.toLowerCase() === (signerAddr || "").toLowerCase();
+    badge.textContent = "◉ TEE ATTESTED";
+    badge.classList.replace("warn", "ok");
+    panel.innerHTML = `
+      <table>
+        <tr><td>issuer</td><td>${esc(claims.iss)}</td></tr>
+        <tr><td>hardware</td><td>${esc(claims.hwmodel)} · secboot ${claims.secboot} · dbgstat ${esc(claims.dbgstat)}</td></tr>
+        <tr><td>software</td><td>${esc(claims.swname)}</td></tr>
+        <tr><td>image digest</td><td>${esc(container.image_digest || "?")}</td></tr>
+        <tr><td>enclave signer</td><td>${esc(claims.eat_nonce)}
+          ${bound ? '<span class="ok-mark"> ✓ bound inside the Google-signed token</span>' : ""}</td></tr>
+      </table>
+      <div style="margin-top:8px;color:var(--dim)">
+        This token is verifiable on-chain: WardAttestor checks Google’s signature and these claims,
+        then Guardian trusts only the key in <code>eat_nonce</code>. Anyone can submit it — replays are harmless.
+      </div>`;
+  } catch {
+    badge.textContent = "○ NOT ATTESTED — LOCAL DEV";
+    panel.innerHTML = `<div style="color:var(--dim)">Running outside Confidential Space:
+      no attestation token available. In the TEE deployment this badge shows the Google-signed
+      claims binding the image digest and the enclave’s signer key.</div>`;
+  }
+}
+const togglePanel = () => $("attest-panel").classList.toggle("open");
+
+/* ---------- wallet ---------- */
+async function connectWallet(silent) {
+  if (!window.ethereum) {
+    if (!silent) alert("No wallet detected. Install MetaMask, or paste an address manually.");
+    return;
+  }
+  try {
+    const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
+    try {
+      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: COSTON2.chainId }] });
+    } catch (e) {
+      if (e.code === 4902) await window.ethereum.request({ method: "wallet_addEthereumChain", params: [COSTON2] });
+    }
+    walletAddr = addr;
+    $("user-addr").value = addr;
+    localStorage.setItem("ward-user", addr);
+    const chip = $("wallet-chip");
+    chip.textContent = "wallet " + short(addr);
+    chip.classList.add("on");
+  } catch (e) { if (!silent) alert("Wallet connection refused: " + (e.message || e)); }
+}
+window.ethereum?.on?.("accountsChanged", ([addr]) => {
+  walletAddr = addr || null;
+  const chip = $("wallet-chip");
+  chip.textContent = addr ? "wallet " + short(addr) : "connect wallet";
+  chip.classList.toggle("on", !!addr);
+  if (addr) { $("user-addr").value = addr; localStorage.setItem("ward-user", addr); }
+});
+
+/* ---------- rendering ---------- */
+function render(entry, fromHistory) {
+  const div = document.createElement("div");
+  div.dataset.entry = entry.id;
+  if (entry.role === "user") {
+    div.className = "msg user" + (fromHistory ? " hist" : "");
+    div.innerHTML = `<div class="bubble">${esc(entry.text)}</div>`;
+  } else {
+    div.className = "msg agent" + (fromHistory ? " hist" : "");
+    div.innerHTML =
+      entry.kind === "envelope" ? envelopeCard(entry) :
+      entry.kind === "refused" ? refusedCard(entry.payload) :
+      entry.kind === "unsupported" ? unsupportedCard(entry.payload) :
+      `<div class="note" style="color:var(--red)">${esc(entry.payload)}</div>`;
+  }
+  chat.appendChild(div);
+  return div;
+}
+
+const parsedLine = (p) => p ? `
+  <div class="parsed"><span class="lbl">parsed intent →</span>
+    swap ${fmtUnits(p.amount_in, decimalsOf(p.token_in))} ${esc(p.token_in)} → ${esc(p.token_out)}
+    ${p.max_slippage_bps != null ? ` · slippage ${p.max_slippage_bps} bps` : ""}
+  </div>` : "";
+
+function hexRow(label, value) {
+  const id = "h" + Math.random().toString(36).slice(2);
+  return `<div class="hexrow"><span class="k">${label}</span>
+    <code id="${id}" title="${esc(value)}">${short(value, 20)}</code>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('${id}').title)">copy</button></div>`;
+}
+
+function execFooter(entry) {
+  if (entry.txHash) {
+    return `<div class="exec"><span class="status ok">✓ executed on-chain</span>
+      <a href="${EXPLORER}/tx/${esc(entry.txHash)}" target="_blank" rel="noopener">view transaction</a></div>`;
+  }
+  const expired = Date.now() / 1000 > Number(entry.payload.envelope.deadline);
+  return `<div class="exec">
+    <button id="exec-${entry.id}" onclick="execEnvelope('${entry.id}')" ${expired ? "disabled" : ""}>
+      ${expired ? "envelope expired" : "Execute"}</button>
+    <span class="status" id="status-${entry.id}">${expired ? "ask for a fresh envelope" : "sends guardian.execute via your wallet"}</span>
+  </div>`;
+}
+
+function envelopeCard(entry) {
+  const d = entry.payload, env = d.envelope, q = d.quote;
+  const [inSym, outSym] = q.pair.split("->");
+  const dIn = decimalsOf(inSym), dOut = decimalsOf(outSym);
+  const deadline = new Date(Number(env.deadline) * 1000);
+  return `<div class="card signed">
+    <div class="head">✓ Signed Safety Envelope <span style="margin-left:auto;font-family:var(--mono);font-size:12px">${esc(q.pair)}</span></div>
+    ${parsedLine(d.parsedIntent)}
+    <div class="body">
+      <div class="grid">
+        <div class="kv"><div class="k">max spend</div><div class="v">${fmtUnits(env.maxAmountIn, dIn)} <small>${esc(inSym)}</small></div></div>
+        <div class="kv"><div class="k">min received</div><div class="v">${fmtUnits(q.minOut, dOut)} <small>${esc(outSym)}</small></div></div>
+        <div class="kv"><div class="k">ftso fair value</div><div class="v">${fmtUnits(q.fairOut, dOut)} <small>${esc(outSym)}</small></div></div>
+        <div class="kv"><div class="k">oracle slippage cap</div><div class="v">${q.maxSlippageBps} <small>bps</small></div></div>
+        <div class="kv"><div class="k">deadline</div><div class="v">${deadline.toLocaleTimeString()}</div></div>
+        <div class="kv"><div class="k">target · selector</div><div class="v" title="${esc(env.target)}">${short(env.target)} <small>${esc(env.selector)}</small></div></div>
+      </div>
+      ${hexRow("signature", d.signature)}
+      ${hexRow("calldata", d.calldata)}
+    </div>
+    ${execFooter(entry)}
+    <div class="foot">Enforced by
+      <a href="${EXPLORER}/address/${esc(d.guardian)}" target="_blank" rel="noopener">Guardian ${short(d.guardian)}</a>
+      — break any bound above and the transaction reverts on-chain.</div>
+  </div>`;
+}
+
+const refusedCard = (detail) => `<div class="card refused">
+  <div class="head">✕ Policy refused</div>
+  ${parsedLine(detail.parsedIntent)}
+  <div class="body"><ul class="violations">
+    ${(detail.violations || []).map(v => `<li>${esc(v)}</li>`).join("")}
+  </ul></div>
+  <div class="foot">The model proposes; the policy engine disposes. Nothing was signed.</div>
+</div>`;
+
+const unsupportedCard = (msg) => `<div class="card unsupported">
+  <div class="head">— Outside my mandate</div>
+  <div class="body" style="color:var(--dim)">${esc(msg)}</div>
+  <div class="foot">Ward only signs envelopes for actions its policy engine can bound. Nothing was signed.</div>
+</div>`;
+
+/* ---------- execution ---------- */
+const rpc = (method, params) => window.ethereum.request({ method, params });
+
+async function waitReceipt(txHash) {
+  for (let i = 0; i < 60; i++) {
+    const r = await rpc("eth_getTransactionReceipt", [txHash]);
+    if (r) return r;
+    await new Promise((res) => setTimeout(res, 2000));
+  }
+  throw new Error("timed out waiting for receipt");
+}
+
+async function execEnvelope(id) {
+  const entry = entries[id];
+  const d = entry.payload, env = d.envelope;
+  const btn = $("exec-" + id), status = $("status-" + id);
+  const say = (msg, cls = "") => { status.textContent = msg; status.className = "status " + cls; };
+  if (!window.ethereum) return say("no wallet detected — install MetaMask", "err");
+  btn.disabled = true;
+  try {
+    await connectWallet(true);
+    const from = walletAddr;
+    if (!from || from.toLowerCase() !== env.user.toLowerCase())
+      return say(`connected wallet must be the envelope user ${short(env.user)}`, "err");
+
+    const need = BigInt(env.maxAmountIn);
+    const dIn = Object.values(tokens).find((t) => t.address.toLowerCase() === env.tokenIn.toLowerCase())?.decimals ?? 18;
+    const allowanceHex = await rpc("eth_call", [{
+      to: env.tokenIn,
+      data: "0xdd62ed3e" + pad32(env.user) + pad32(d.guardian),
+    }, "latest"]);
+    if (BigInt(allowanceHex) < need) {
+      say("wallet: approve Guardian to pull " + fmtUnits(env.maxAmountIn, dIn) + "…");
+      const approveTx = await rpc("eth_sendTransaction", [{
+        from, to: env.tokenIn,
+        data: "0x095ea7b3" + pad32(d.guardian) + pad32(need),
+      }]);
+      say("approval pending…");
+      const ar = await waitReceipt(approveTx);
+      if (ar.status !== "0x1") return say("approval reverted", "err");
+    }
+
+    say("encoding guardian.execute…");
+    const r = await fetch("/execute-calldata", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ envelope: env, signature: d.signature, calldata: d.calldata }),
+    });
+    if (!r.ok) return say("encode failed: " + (await r.text()), "err");
+    const { to, data } = await r.json();
+
+    say("wallet: confirm the execute transaction…");
+    const txHash = await rpc("eth_sendTransaction", [{ from, to, data }]);
+    say("executing on-chain…");
+    const receipt = await waitReceipt(txHash);
+    if (receipt.status === "0x1") {
+      entry.txHash = txHash;
+      saveEntry(entry);
+      btn.closest(".exec").outerHTML = execFooter(entry);
+    } else {
+      say("reverted — Guardian refused the execution", "err");
+      btn.disabled = false;
+    }
+  } catch (e) {
+    say(e?.message || String(e), "err");
+    btn.disabled = false;
+  }
+}
+
+/* ---------- chat ---------- */
+function suggest(el) { $("prompt").value = el.textContent; $("prompt").focus(); }
+
+async function send() {
+  const text = $("prompt").value.trim();
+  const user = $("user-addr").value.trim();
+  if (!text) return;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(user)) return alert("Enter a valid 0x address or connect a wallet.");
+  localStorage.setItem("ward-user", user);
+  $("prompt").value = "";
+  const userEntry = { id: "u" + Date.now(), role: "user", text };
+  entries[userEntry.id] = userEntry; render(userEntry); saveEntry(userEntry);
+  const pending = render({ id: "p", role: "agent", kind: "error", payload: "" });
+  pending.innerHTML = `<div class="note">planning · checking policy · signing…</div>`;
+  chat.scrollTop = chat.scrollHeight;
+  $("send").disabled = true;
+  try {
+    const r = await fetch("/intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user, text }),
+    });
+    const body = await r.json();
+    const entry = { id: "a" + Date.now(), role: "agent" };
+    if (r.ok) { entry.kind = "envelope"; entry.payload = body; }
+    else if (r.status === 403 && body.detail?.violations) { entry.kind = "refused"; entry.payload = body.detail; }
+    else if (r.status === 400 && body.detail?.unsupported) { entry.kind = "unsupported"; entry.payload = body.detail.unsupported; }
+    else { entry.kind = "error"; entry.payload = "agent error: " + JSON.stringify(body.detail ?? r.status); }
+    entries[entry.id] = entry; saveEntry(entry);
+    pending.remove(); render(entry);
+  } catch (e) {
+    pending.innerHTML = `<div class="note" style="color:var(--red)">agent unreachable: ${esc(e.message)}</div>`;
+  } finally {
+    $("send").disabled = false;
+    chat.scrollTop = chat.scrollHeight;
+  }
+}
+$("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+
+init();
+</script>
+</body>
+</html>

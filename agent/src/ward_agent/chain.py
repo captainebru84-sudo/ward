@@ -96,3 +96,20 @@ class FtsoReader:
 
 def guardian_contract(w3: Web3, address: str):
     return w3.eth.contract(Web3.to_checksum_address(address), abi=GUARDIAN_ABI)
+
+
+def encode_execute(envelope: dict, signature: str, amount_in: int, calldata: str) -> str:
+    """ABI-encodes Guardian.execute for the envelope's hex/string JSON form."""
+    env_tuple = tuple(
+        bytes.fromhex(envelope[c["name"]][2:])
+        if c["type"].startswith("bytes")
+        else Web3.to_checksum_address(envelope[c["name"]])
+        if c["type"] == "address"
+        else int(envelope[c["name"]])
+        for c in ENVELOPE_COMPONENTS
+    )
+    contract = Web3().eth.contract(abi=GUARDIAN_ABI)
+    return contract.encode_abi(
+        "execute",
+        args=[env_tuple, bytes.fromhex(signature[2:]), amount_in, bytes.fromhex(calldata[2:])],
+    )

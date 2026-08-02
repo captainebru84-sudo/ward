@@ -35,6 +35,15 @@ def test_health_and_signer():
     assert signer["address"].startswith("0x")
 
 
+def test_ui_and_tokens():
+    client = make_client()
+    page = client.get("/")
+    assert page.status_code == 200
+    assert "Safety Envelope" in page.text
+    toks = client.get("/tokens").json()
+    assert toks["USDC"]["decimals"] == TOKENS["USDC"].decimals
+
+
 def test_attestation_unavailable_outside_tee():
     client = make_client()
     resp = client.get("/attestation")
@@ -70,5 +79,40 @@ def test_envelope_endpoint_rejects_unknown_token():
     resp = client.post(
         "/envelope",
         json={"user": USER, "token_in": "DOGE", "token_out": "WFLR", "amount_in": 1},
+    )
+    assert resp.status_code == 400
+
+
+def test_execute_calldata_round_trips():
+    from web3 import Web3
+
+    from ward_agent.chain import GUARDIAN_ABI
+
+    client = make_client()
+    signed = client.post(
+        "/envelope",
+        json={"user": USER, "token_in": "USDC", "token_out": "WFLR", "amount_in": 100_000_000},
+    ).json()
+    resp = client.post(
+        "/execute-calldata",
+        json={"envelope": signed["envelope"], "signature": signed["signature"], "calldata": signed["calldata"]},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["to"] == GUARDIAN
+
+    contract = Web3().eth.contract(abi=GUARDIAN_ABI)
+    fn, args = contract.decode_function_input(body["data"])
+    assert fn.fn_name == "execute"
+    assert args["amountIn"] == int(signed["envelope"]["maxAmountIn"])
+    assert args["env"]["user"] == USER
+    assert "0x" + args["data"].hex() == signed["calldata"]
+
+
+def test_execute_calldata_rejects_malformed_envelope():
+    client = make_client()
+    resp = client.post(
+        "/execute-calldata",
+        json={"envelope": {"user": "0x0"}, "signature": "0x00", "calldata": "0x00"},
     )
     assert resp.status_code == 400

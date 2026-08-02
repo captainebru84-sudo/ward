@@ -5,10 +5,11 @@ Envelope out or a 403 listing every policy rule the plan violated.
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from ward_agent.attestation import DEFAULT_AUDIENCE, NotInTee, fetch_attestation_token
-from ward_agent.chain import FtsoReader, get_w3
+from ward_agent.chain import FtsoReader, encode_execute, get_w3
 from ward_agent.config import Settings, get_settings
 from ward_agent.envelope import SafetyEnvelope
 from ward_agent.intent import IntentParser, UnsupportedIntent
@@ -18,6 +19,8 @@ from ward_agent.signer import WardSigner
 
 import json
 from pathlib import Path
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 class PolicyRefusal(Exception):
@@ -29,6 +32,13 @@ class PolicyRefusal(Exception):
 class IntentRequest(BaseModel):
     user: str
     text: str
+
+
+class ExecuteCalldataRequest(BaseModel):
+    envelope: dict
+    signature: str
+    calldata: str
+    amountIn: str | None = None  # defaults to the envelope's maxAmountIn
 
 
 class AgentService:
@@ -98,9 +108,17 @@ def create_app(service: AgentService | None = None) -> FastAPI:
     app = FastAPI(title="Ward Agent", version="0.1.0")
     svc = service or build_service()
 
+    @app.get("/", include_in_schema=False)
+    def ui() -> FileResponse:
+        return FileResponse(STATIC_DIR / "index.html")
+
     @app.get("/health")
     def health() -> dict:
         return {"status": "ok", "chainId": svc.chain_id, "guardian": svc.guardian}
+
+    @app.get("/tokens")
+    def tokens() -> dict:
+        return {sym: t.model_dump() for sym, t in svc.planner.tokens.items()}
 
     @app.get("/signer")
     def signer() -> dict:
@@ -122,6 +140,15 @@ def create_app(service: AgentService | None = None) -> FastAPI:
             raise HTTPException(status_code=403, detail={"violations": e.violations})
         except KeyError as e:
             raise HTTPException(status_code=400, detail=f"unknown token or feed: {e}")
+
+    @app.post("/execute-calldata")
+    def execute_calldata(req: ExecuteCalldataRequest) -> dict:
+        try:
+            amount_in = int(req.amountIn) if req.amountIn else int(req.envelope["maxAmountIn"])
+            data = encode_execute(req.envelope, req.signature, amount_in, req.calldata)
+        except (KeyError, ValueError) as e:
+            raise HTTPException(status_code=400, detail=f"malformed envelope: {e}")
+        return {"to": svc.guardian, "data": data, "value": "0x0", "chainId": svc.chain_id}
 
     @app.post("/intent")
     def intent(req: IntentRequest) -> dict:
