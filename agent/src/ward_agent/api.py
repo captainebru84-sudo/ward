@@ -121,6 +121,12 @@ def create_app(service: AgentService | None = None) -> FastAPI:
     def ui() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
+    # Vendored so the attested image serves every byte of code the browser runs —
+    # no CDN in the trust story, no external dependency at demo time.
+    @app.get("/vendor/supabase.js", include_in_schema=False)
+    def supabase_js() -> FileResponse:
+        return FileResponse(STATIC_DIR / "vendor" / "supabase.js", media_type="application/javascript")
+
     @app.get("/health")
     def health() -> dict:
         return {"status": "ok", "chainId": svc.chain_id, "guardian": svc.guardian}

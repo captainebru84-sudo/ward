@@ -170,7 +170,11 @@
   /* ---------- review ---------- */
   #review {
     border-left: 1px solid var(--line); background: var(--panel); min-height: 0;
-    display: flex; flex-direction: column; overflow-y: auto;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #rv-scroll {
+    flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    overscroll-behavior: contain;
   }
   #review .rv-head {
     padding: 14px 18px 10px; font-size: 11px; letter-spacing: .18em; color: var(--faint);
@@ -262,9 +266,86 @@
     background: rgba(13,22,19,.92); color: var(--green); font-size: 13px; font-weight: 600;
     box-shadow: 0 6px 24px rgba(0,0,0,.5);
   }
+
+  /* ---------- landing / mode switching ----------
+     Placed AFTER the 1080px media block on purpose: body{overflow:hidden}
+     exists both at the top and inside that block, and the landing must
+     out-specificity both to scroll. */
+  #lp { display: none; }
+  body.mode-boot > #ticker, body.mode-boot > #shell, body.mode-boot > #lp { display: none; }
+  body.mode-landing > #ticker, body.mode-landing > #shell { display: none; }
+  body.mode-landing > #backdrop, body.mode-landing > #review-pill { display: none !important; }
+  body.mode-landing {
+    display: block; height: auto; min-height: 100%;
+    overflow-y: auto; overflow-x: hidden;
+  }
+  body.mode-landing #lp { display: block; }
+  body.mode-app > #lp { display: none; }
+
+  #lp { max-width: 1040px; margin: 0 auto; padding: 0 18px 64px; position: relative; z-index: 1; }
+  .lp-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+  .lp-hero { padding: 40px 0 28px; }
+  .lp-badge {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    color: var(--ember1); border: 1px solid rgba(255,61,103,.3);
+    background: rgba(255,61,103,.07); border-radius: 99px; padding: 5px 12px; margin-bottom: 18px;
+  }
+  .lp-hero h2 { font-size: clamp(30px, 7vw, 52px); line-height: 1.1; margin: 0 0 14px; letter-spacing: -.02em; }
+  .lp-hero h2 em {
+    font-style: normal; background: linear-gradient(90deg, var(--ember1), var(--ember2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lp-hero p { color: var(--dim); font-size: 15px; max-width: 54ch; margin: 0 0 26px; }
+  .lp-auth { display: flex; flex-direction: column; gap: 9px; max-width: 380px; }
+  .lp-auth input {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 11px; padding: 11px 13px; font-size: 14px; outline: none;
+  }
+  .lp-auth input:focus { border-color: var(--ember1); box-shadow: 0 0 0 3px rgba(255,61,103,.12); }
+  .lp-row { display: flex; gap: 9px; }
+  .lp-cta {
+    flex: 1; border: 0; border-radius: 11px; padding: 12px 20px; font-size: 14.5px; font-weight: 800;
+    cursor: pointer; color: #14060a; background: linear-gradient(90deg, var(--ember1), var(--ember2));
+    box-shadow: 0 4px 20px rgba(255,61,103,.3);
+  }
+  .lp-cta:disabled { opacity: .5; cursor: wait; }
+  .lp-ghost {
+    border: 1px solid var(--line2); background: none; color: var(--dim); border-radius: 11px;
+    padding: 12px 16px; font-size: 13.5px; cursor: pointer; text-decoration: none; white-space: nowrap;
+  }
+  .lp-ghost:hover { color: var(--text); border-color: var(--ember1); }
+  .lp-guest { background: none; border: 0; color: var(--faint); font-size: 12.5px; cursor: pointer; padding: 6px 0; text-align: left; }
+  .lp-guest:hover { color: var(--ember1); }
+  .lp-err { color: var(--red); font-size: 12.5px; font-family: var(--mono); }
+  .lp-trustline { color: var(--faint); font-size: 11.5px; margin-top: 20px; letter-spacing: .04em; }
+  .lp-sec { padding: 34px 0; border-top: 1px solid var(--line); }
+  .lp-sec h3 { font-size: 20px; margin: 0 0 16px; }
+  .lp-lede { color: var(--dim); font-size: 14px; margin: -6px 0 18px; max-width: 60ch; }
+  .lp-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .lp-card { border: 1px solid var(--line); background: var(--glass); border-radius: 14px; padding: 16px 17px; }
+  .lp-card h4 { margin: 8px 0 6px; font-size: 15px; }
+  .lp-card p { margin: 0; color: var(--dim); font-size: 13.5px; }
+  .lp-ic { font-size: 19px; color: var(--ember1); }
+  .lp-card.lp-dim { opacity: .72; border-style: dashed; }
+  .lp-soon {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--amber); border: 1px solid rgba(255,195,87,.35); border-radius: 99px; padding: 2px 8px;
+  }
+  .lp-steps { margin: 0; padding-left: 20px; color: var(--dim); font-size: 14px; }
+  .lp-steps li { margin-bottom: 11px; }
+  .lp-steps b { color: var(--text); font-weight: 600; }
+  .lp-steps code { font-family: var(--mono); font-size: 12.5px; color: var(--ember1); }
+  .lp-foot {
+    border-top: 1px solid var(--line); padding-top: 20px; display: flex; flex-wrap: wrap; gap: 8px 26px;
+    font-size: 12.5px; color: var(--dim);
+  }
+  .lp-foot a { color: var(--blue); text-decoration: none; font-family: var(--mono); }
+  .lp-fine { width: 100%; color: var(--faint); font-size: 11px; }
+  @media (min-width: 720px) { .lp-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1000px) { .lp-grid-3 { grid-template-columns: repeat(3, 1fr); } }
 </style>
 </head>
-<body>
+<body class="mode-boot">
 
 <div id="ticker">
   <span class="src"><b>◆ FTSO</b> LIVE</span>
@@ -294,6 +375,7 @@
       <button class="wbtn" id="wallet-btn" onclick="connectWallet()">Connect wallet</button>
       <input id="user-addr" spellcheck="false" placeholder="or paste address 0x…">
     </div>
+    <button class="wbtn" id="signout-btn" onclick="signOut()" style="margin-top:0;border-color:var(--line2);background:none;color:var(--dim)">Sign out</button>
   </aside>
 
   <section id="center">
@@ -322,15 +404,98 @@
   <aside id="review">
     <div class="rv-head">ENVELOPE REVIEW <span class="st" id="rv-state" style="display:none"></span>
       <button id="rv-close" onclick="closeReview()">✕ close</button></div>
-    <div id="rv-empty">No envelope yet.<br>Ask Ward for a swap and the signed guarantees land here.</div>
-    <div id="rv-body" style="display:none"></div>
+    <div id="rv-scroll" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+      <div id="rv-empty">No envelope yet.<br>Ask Ward for a swap and the signed guarantees land here.</div>
+      <div id="rv-body" style="display:none"></div>
+    </div>
   </aside>
 
 </div>
 
-<div id="backdrop" onclick="closeReview()"></div>
+<div id="lp">
+  <header class="lp-nav">
+    <div class="brand"><div class="orb">◆</div><div><h1>WARD</h1><div class="sub">promises, enforced</div></div></div>
+    <a class="lp-ghost" href="#lp-how">How it works</a>
+  </header>
+
+  <section class="lp-hero">
+    <div class="lp-badge">◆ RUNNING IN A GCP CONFIDENTIAL SPACE TEE · INTEL TDX</div>
+    <h2>Your DeFi copilot, <em>bound by contract</em>.</h2>
+    <p>Tell Ward what you want in plain English. It plans the trade inside a sealed enclave,
+       checks it against your policies, and signs a <b style="color:var(--text)">Safety Envelope</b>
+       the Guardian contract enforces on-chain. Break a promise — the chain reverts it.</p>
+    <div class="lp-auth">
+      <input id="lp-email" type="email" autocomplete="email" placeholder="you@example.com">
+      <input id="lp-pass" type="password" autocomplete="current-password" placeholder="password">
+      <div class="lp-row">
+        <button class="lp-cta" id="lp-go" onclick="signIn()">Sign in ▸</button>
+        <button class="lp-ghost" id="lp-signup" onclick="signUp()">Create account</button>
+      </div>
+      <div id="lp-auth-err" class="lp-err" style="display:none"></div>
+      <button class="lp-guest" onclick="enterAsGuest()">Enter as guest — skip signup →</button>
+    </div>
+    <div class="lp-trustline">No custody · Your keys, your signature · Coston2 testnet</div>
+  </section>
+
+  <section class="lp-sec">
+    <h3>Live today</h3>
+    <div class="lp-grid lp-grid-3">
+      <div class="lp-card"><div class="lp-ic">⬢</div><h4>Natural-language trades</h4>
+        <p>“Swap 100 USDC into WFLR.” Gemini parses intent inside the enclave; a deterministic
+           policy engine — not the model — decides.</p></div>
+      <div class="lp-card"><div class="lp-ic">⛨</div><h4>Enforced guarantees</h4>
+        <p>Every envelope carries an FTSO price floor, a spend cap and a slippage bound.
+           Guardian re-checks all three at execution time.</p></div>
+      <div class="lp-card"><div class="lp-ic">✕</div><h4>Refusals you can audit</h4>
+        <p>Ask for 0.25% slippage or “transfer all” and Ward refuses with the exact rule it hit.
+           No silent failures.</p></div>
+    </div>
+  </section>
+
+  <section class="lp-sec">
+    <h3>Roadmap <span class="lp-soon">coming soon</span></h3>
+    <p class="lp-lede">Today's features are the MVP slice. The Safety Envelope primitive
+       generalises to everything a copilot should do for you:</p>
+    <div class="lp-grid">
+      <div class="lp-card lp-dim"><span class="lp-soon">soon</span><h4>Portfolio view</h4>
+        <p>Live positions and P&amp;L across your wallets, priced by FTSO.</p></div>
+      <div class="lp-card lp-dim"><span class="lp-soon">soon</span><h4>Cross-chain</h4>
+        <p>One envelope spanning Flare and beyond via FAssets and state connectors.</p></div>
+      <div class="lp-card lp-dim"><span class="lp-soon">soon</span><h4>Limit orders &amp; DCA</h4>
+        <p>Standing envelopes the enclave executes when the oracle agrees.</p></div>
+      <div class="lp-card lp-dim"><span class="lp-soon">soon</span><h4>Alerts</h4>
+        <p>Policy breaches, oracle drift and expiring envelopes, pushed to you.</p></div>
+    </div>
+  </section>
+
+  <section class="lp-sec" id="lp-how">
+    <h3>Why you can trust the screen you're reading</h3>
+    <ol class="lp-steps">
+      <li><b>The agent boots in a sealed enclave.</b> It generates its signing key inside Intel TDX.
+          No human — including us — ever sees that key.</li>
+      <li><b>Google signs a statement about it.</b> An OIDC attestation token binds the exact
+          container image digest, the hardware, and the enclave's address.</li>
+      <li><b>The chain checks that token itself.</b> <code>WardAttestor</code> verifies Google's
+          RS256 signature and the image digest on-chain, then installs the enclave key as the only
+          signer Guardian trusts. Anyone can submit it — no owner privilege.</li>
+      <li><b>This page came from that same enclave.</b> The UI is served by the attested agent.
+          The thing you're talking to is the thing that was measured.</li>
+    </ol>
+  </section>
+
+  <footer class="lp-foot">
+    <div><b>Guardian</b> <a target="_blank" rel="noopener"
+      href="https://coston2-explorer.flare.network/address/0x5FCDc267ca392B64362957b7FD021719466d1775">0x5FCD…1775 ↗</a></div>
+    <div><b>WardAttestor</b> <a target="_blank" rel="noopener"
+      href="https://coston2-explorer.flare.network/address/0xD06059f36cB6fc2737977f1445c95713f6a85b0F">0xD060…5b0F ↗</a></div>
+    <div class="lp-fine">Coston2 testnet · chain 114 · Flare Summer Signal 2026</div>
+  </footer>
+</div>
+
+<div id="backdrop"></div>
 <div id="review-pill" onclick="openReview()">⛨ Envelope review</div>
 
+<script src="/vendor/supabase.js"></script>
 <script>
 const EXPLORER = "https://coston2-explorer.flare.network";
 const COSTON2 = { chainId: "0x72", chainName: "Flare Testnet Coston2",
@@ -356,6 +521,65 @@ function fmtUnits(raw, decimals, maxFrac = 4) {
 }
 const decimalsOf = (sym) => tokens[sym]?.decimals ?? 18;
 const decimalsOfAddr = (addr) => Object.values(tokens).find((t) => t.address.toLowerCase() === addr.toLowerCase())?.decimals ?? 18;
+
+/* ---------- auth / landing ---------- */
+// Anon key is public-by-design (row security lives server-side) — safe to bake
+// into the attested image. Bundle is vendored at /vendor/supabase.js so every
+// byte the browser runs comes from the enclave.
+const SUPABASE_URL = "https://vphrngufovwcbqnjjldn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_zImG5-3O-4GLUfYQ8i_9bg_nO9ykU-V";
+const sbConfigured = SUPABASE_URL.startsWith("https://");
+// NB: the UMD bundle owns the global `supabase` — bind our client to `sb`.
+const sb = sbConfigured && window.supabase
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, flowType: "pkce" },
+    })
+  : null;
+
+let appBooted = false;
+function setMode(m) {
+  document.body.className = "mode-" + m;
+  if (m === "app") { chat.scrollTop = chat.scrollHeight; updatePill(); }
+  if (m === "landing") window.scrollTo(0, 0);
+}
+function bootApp() { if (!appBooted) { appBooted = true; initApp(); } setMode("app"); }
+
+function authErr(msg) {
+  const el = $("lp-auth-err");
+  el.textContent = msg || ""; el.style.display = msg ? "block" : "none";
+}
+function authPending(on) { $("lp-go").disabled = on; $("lp-signup").disabled = on; }
+
+async function signUp() {
+  if (!sb) return authErr("Auth not configured yet — enter as guest below.");
+  const email = $("lp-email").value.trim(), password = $("lp-pass").value;
+  if (!email || password.length < 6) return authErr("Email and a 6+ character password, please.");
+  authErr(""); authPending(true);
+  const { data, error } = await sb.auth.signUp({ email, password });
+  authPending(false);
+  if (error) return authErr(error.message);
+  if (!data.session) return authErr("Check your inbox to confirm, then sign in.");
+  bootApp();
+}
+
+async function signIn() {
+  if (!sb) return authErr("Auth not configured yet — enter as guest below.");
+  const email = $("lp-email").value.trim(), password = $("lp-pass").value;
+  if (!email || !password) return authErr("Email and password, please.");
+  authErr(""); authPending(true);
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  authPending(false);
+  if (error) return authErr(error.message);
+  bootApp();
+}
+
+async function signOut() {
+  sessionStorage.removeItem("ward-guest");
+  if (sb) await sb.auth.signOut(); // chat history + wallet stay — they're local
+  setMode("landing");
+}
+
+function enterAsGuest() { sessionStorage.setItem("ward-guest", "1"); bootApp(); }
 
 /* ---------- ticker ---------- */
 const tickerState = {}; // sym -> { open, last }
@@ -410,7 +634,7 @@ function clearHistory() {
 }
 
 /* ---------- boot ---------- */
-async function init() {
+async function initApp() {
   $("user-addr").value = localStorage.getItem("ward-user") || "";
   try {
     const [health, signer, toks] = await Promise.all([
@@ -574,6 +798,16 @@ function closeReview() {
   updatePill();
 }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeReview(); });
+(function () {
+  let _start = null;
+  const bd = $("backdrop");
+  bd.addEventListener("pointerdown", (e) => { _start = { x: e.clientX, y: e.clientY }; });
+  bd.addEventListener("pointerup", (e) => {
+    if (_start && Math.abs(e.clientX - _start.x) < 10 && Math.abs(e.clientY - _start.y) < 10) closeReview();
+    _start = null;
+  });
+  bd.addEventListener("pointercancel", () => { _start = null; });
+}());
 function updatePill() {
   const hasEnvelope = Object.values(entries).some((e) => e.kind === "envelope");
   $("review-pill").style.display =
@@ -768,8 +1002,20 @@ async function send() {
   }
 }
 $("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+["lp-email", "lp-pass"].forEach((id) =>
+  $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") signIn(); }));
 
-init();
+async function boot() {
+  let session = null;
+  if (sb) try { ({ data: { session } } = await sb.auth.getSession()); } catch { /* offline */ }
+  if (session || sessionStorage.getItem("ward-guest")) bootApp();
+  else setMode("landing");
+  sb?.auth.onAuthStateChange((evt, session) => {
+    if (evt === "SIGNED_IN" && session) bootApp();
+    if (evt === "SIGNED_OUT") setMode("landing");
+  });
+}
+boot();
 </script>
 </body>
 </html>

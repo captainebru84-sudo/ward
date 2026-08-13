@@ -40,8 +40,18 @@ def test_ui_and_tokens():
     page = client.get("/")
     assert page.status_code == 200
     assert "Safety Envelope" in page.text
+    assert 'id="lp"' in page.text  # landing view ships in the same attested file
+    assert 'class="mode-boot"' in page.text  # no landing flash before session check
+    assert 'id="shell"' in page.text  # app shell still present
     toks = client.get("/tokens").json()
     assert toks["USDC"]["decimals"] == TOKENS["USDC"].decimals
+
+
+def test_vendored_supabase_is_same_origin():
+    client = make_client()
+    resp = client.get("/vendor/supabase.js")
+    assert resp.status_code == 200
+    assert "javascript" in resp.headers["content-type"]
 
 
 def test_feeds_returns_ticker_prices():

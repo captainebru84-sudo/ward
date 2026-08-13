@@ -10,6 +10,9 @@ const { vars } = require("hardhat/config");
 
 // Load environment variables
 const PRIVATE_KEY = process.env.PRIVATE_KEY ?? "";
+// Optional second Coston2 account for demonstrating that rotateSignerByAttestation
+// needs no owner privilege (scripts/ward/rotateByAttestation.ts uses signers[1])
+const NONOWNER_KEY = process.env.NONOWNER_KEY ?? "";
 const FLARE_RPC_API_KEY = process.env.FLARE_RPC_API_KEY ?? "";
 const FLARE_EXPLORER_API_KEY = process.env.FLARE_EXPLORER_API_KEY ?? "";
 
@@ -69,7 +72,7 @@ const config: HardhatUserConfig = {
             url: FLARE_RPC_API_KEY
                 ? `https://coston2-api-tracer.flare.network/ext/C/rpc?x-apikey=${FLARE_RPC_API_KEY}`
                 : "https://coston2-api.flare.network/ext/C/rpc",
-            accounts: [`${PRIVATE_KEY}`],
+            accounts: [`${PRIVATE_KEY}`, ...(NONOWNER_KEY ? [`${NONOWNER_KEY}`] : [])],
             chainId: 114,
         },
         songbird: {
